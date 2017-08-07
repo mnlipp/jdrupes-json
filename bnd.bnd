@@ -1,0 +1,37 @@
+Bundle-Name: JDrupes HTTP Codec
+Bundle-SymbolicName: org.jdrupes.json
+Bundle-Version: 0.0.1.${tstamp}
+Bundle-Copyright: Michael N. Lipp (c) 2016
+Bundle-License: http://www.gnu.org/licenses/lgpl-3.0.txt
+
+base_version = ${versionmask;===;${Bundle-Version}}
+# This is used as the general API version for all packages.
+# This being a library, individual API versions for packages don't 
+# really make sense.
+api_version = 0.12.0.${tstamp}
+
+-sources: true
+-runee: JavaSE-1.8
+-dsannotations: 
+testbin=bin
+
+Require-Capability: \
+	osgi.extender; filter:="(osgi.extender=osgi.serviceloader.registrar)", \
+	osgi.extender; filter:="(osgi.extender=osgi.serviceloader.processor)", \
+    osgi.serviceloader; \
+        filter:="(osgi.serviceloader=org.jdrupes.json.plugin.ProtocolProvider)"; \
+    	    cardinality:=multiple
+
+Provide-Capability: osgi.serviceloader; \
+    osgi.serviceloader=org.jdrupes.json.plugin.ProtocolProvider
+
+
+-includeresource: resources
+
+-fixupmessages: \
+	"Found source folder 'resources' that is not on bnd's source path", \
+	"Found source folder 'demo' that is not on bnd's source path", \
+	"The .classpath contains an unknown container: GROOVY_DSL_SUPPORT. This could make your build less portable.", \
+	"The .classpath contains an unknown container: org.eclipse.buildship.core.gradleclasspathcontainer. This could make your build less portable."
+	
+Export-Package: org.jdrupes.json
