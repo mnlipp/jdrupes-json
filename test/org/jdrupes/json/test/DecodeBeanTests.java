@@ -48,9 +48,6 @@ public class DecodeBeanTests {
 		private String name;
 		private String number;
 
-		public PhoneNumber() {
-		}
-		
 		public String getName() {
 			return name;
 		}
