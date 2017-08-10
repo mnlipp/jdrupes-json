@@ -83,9 +83,6 @@ jar {
 	manifest {
 		attributes('Bundle-Version': version)
 	}
-    into('META-INF') {
-        from 'resources/META-INF'
-    }
 }
 
 dependencies {
