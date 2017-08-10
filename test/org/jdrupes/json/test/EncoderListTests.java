@@ -5,7 +5,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import org.jdrupes.json.JsonEncoder;
+import org.jdrupes.json.JsonBeanEncoder;
 
 import static org.junit.Assert.*;
 
@@ -45,7 +45,7 @@ public class EncoderListTests {
 		Bean1 bean = new Bean1();
 		bean.setItems(Arrays.asList(new Bean2[] { item1 }));
 		
-		String result = JsonEncoder.create().writeObject(bean).toJson();
+		String result = JsonBeanEncoder.create().writeObject(bean).toJson();
 		assertEquals("{\"items\":["
 				+ "{\"class\":\"org.jdrupes.json.test.EncoderListTests$Bean2\","
 				+ "\"name\":\"Item1\"}]}",

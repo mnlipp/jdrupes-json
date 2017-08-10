@@ -1,0 +1,22 @@
+package org.jdrupes.json.test;
+
+import org.jdrupes.json.JsonBeanDecoder
+import org.jdrupes.json.test.SimpleEncoderTests.PhoneNumber
+
+import spock.lang.*
+
+class SimpleDecoderTests extends Specification {
+
+	void "Basic Array Test"() {		
+		when:
+		String json = '[[11,12,13],[21,22]]';
+		int[][] result = JsonBeanDecoder.create(json).readArray(int[][]);
+		
+		then:
+		result.length == 2
+		result[0].length == 3
+		result[1].length == 2
+		result[0][0] == 11
+	}
+	
+}

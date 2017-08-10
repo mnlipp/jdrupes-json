@@ -1,13 +1,56 @@
 package org.jdrupes.json.test;
 
-import org.jdrupes.json.JsonEncoder
+import org.jdrupes.json.JsonBeanEncoder
 
-import groovy.transform.CompileStatic
 import groovy.transform.InheritConstructors
 import spock.lang.*
 
 class SimpleEncoderTests extends Specification {
 
+	void "Basic List Test"() {
+		setup: "Create data"
+		List<List<Integer>> list = new ArrayList();
+		List<Integer> l1 = new ArrayList();
+		list.add(l1);
+		l1.add(11);
+		l1.add(12);
+		l1.add(13);
+		List<Integer> l2 = new ArrayList();
+		list.add(l2);
+		l2.add(21);
+		l2.add(22);
+		
+		when:
+		String json = JsonBeanEncoder.create().writeObject(list).toJson();
+		
+		then:
+		json == '[[11,12,13],[21,22]]'
+	}
+	
+	void "Basic Array Test"() {
+		setup: "Create data"
+		String[][] a = [ [ "11", "12", "13" ], [ "21", "22" ] ];
+		
+		when:
+		String json = JsonBeanEncoder.create().writeObject(a).toJson();
+		
+		then:
+		json == '[["11","12","13"],["21","22"]]'
+	}
+	
+	void "Basic Map Test"() {
+		setup: "Create data"
+		Map data = new HashMap();
+		data.put("entry1", "42");
+		data.put("entry2", "yes");
+		
+		when:
+		String json = JsonBeanEncoder.create().writeObject(data).toJson();
+		
+		then:
+		json == '{"entry1":"42","entry2":"yes"}'
+	}
+	
 	public class Person {
 
 		private String name;
@@ -60,7 +103,7 @@ class SimpleEncoderTests extends Specification {
 	public class SpecialNumber extends PhoneNumber {
 	}
 	
-	void "Basic Test"() {
+	void "Bean Test"() {
 		setup: "Prepare data"
 		Person person = new Person();
 		person.setName("Simon Sample");
@@ -71,9 +114,11 @@ class SimpleEncoderTests extends Specification {
 		person.setNumbers(phoneNumbers);
 		
 		when:
-		String json = JsonEncoder.create().writeObject(person).toJson();
+		String json = JsonBeanEncoder.create().
+			addAlias(SpecialNumber.class, "SpecialNumber").
+			writeObject(person).toJson();
 		
 		then:
-		json == '{"age":42,"name":"Simon Sample","numbers":[{"name":"Home","number":"06751 51 56 57"},{"class":"org.jdrupes.json.test.SimpleEncoderTests$SpecialNumber","name":"Work","number":"030 77 35 44"}]}'
+		json == '{"age":42,"name":"Simon Sample","numbers":[{"name":"Home","number":"06751 51 56 57"},{"class":"SpecialNumber","name":"Work","number":"030 77 35 44"}]}'
 	}
 }

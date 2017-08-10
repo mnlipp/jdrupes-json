@@ -24,6 +24,7 @@ import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
 import java.beans.PropertyEditor;
 import java.beans.PropertyEditorManager;
+import java.beans.Transient;
 import java.io.StringWriter;
 import java.io.Writer;
 import java.lang.reflect.InvocationTargetException;
@@ -31,6 +32,7 @@ import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -39,19 +41,138 @@ import javax.json.Json;
 import javax.json.stream.JsonGenerator;
 
 /**
+ * Encoder for converting a Java object graph to JSON. Objects may be arrays,
+ * collections, maps and JavaBeans.
+ * 
+ * Arrays and collections are converted to JSON arrays. The
+ * type information is lost. Maps and JavaBeans are converted
+ * to JSON objects.
+ * 
+ * The generated JSON objects can have an additional key/value pair with
+ * key "class" and a class name. The class information is generated
+ * only when it is needed, i.e. when it cannot be derived from the containing
+ * object.
+ * 
+ * Given the following classes:
+ *
+ * ```java
+ * public static class Person {
+ *
+ *     private String name;
+ *     private int age;
+ *     private PhoneNumber[] numbers;
+ *
+ *     public String getName() {
+ *         return name;
+ *     }
+ *     
+ *     public void setName(String name) {
+ *         this.name = name;
+ *     }
+ *     
+ *     public int getAge() {
+ *         return age;
+ *     }
+ *     
+ *     public void setAge(int age) {
+ *         this.age = age;
+ *     }
+ *     
+ *     public PhoneNumber[] getNumbers() {
+ *         return numbers;
+ *     }
+ *     
+ *     public void setNumbers(PhoneNumber[] numbers) {
+ *         this.numbers = numbers;
+ *     }
+ * }
+ *
+ * public static class PhoneNumber {
+ *     private String name;
+ *     private String number;
+ *
+ *     public PhoneNumber() {
+ *     }
+ *     
+ *     public String getName() {
+ *         return name;
+ *     }
+ *     
+ *     public void setName(String name) {
+ *         this.name = name;
+ *     }
+ *     
+ *     public String getNumber() {
+ *         return number;
+ *     }
+ *     
+ *     public void setNumber(String number) {
+ *         this.number = number;
+ *     }
+ * }
+ *
+ * public static class SpecialNumber extends PhoneNumber {
+ * }
+ * ```
+ * 
+ * A serialization result may look like this:
+ * 
+ * ```json
+ * {
+ *     "age": 42,
+ *     "name": "Simon Sample",
+ *     "numbers": [
+ *         {
+ *             "name": "Home",
+ *             "number": "06751 51 56 57"
+ *         },
+ *         {
+ *             "class": "test.json.SpecialNumber",
+ *             "name": "Work",
+ *             "number": "030 77 35 44"
+ *         }
+ *     ]
+ * } 
+ * ```
+ * 
  * 
  */
-public class JsonEncoder {
+public class JsonBeanEncoder extends JsonCoder {
 
 	private static final Set<String> EXCLUDED_DEFAULT = new HashSet<>();
 
 	static {
+		// See https://issues.apache.org/jira/browse/GROOVY-8284
 		EXCLUDED_DEFAULT.add("groovy.lang.MetaClass");
 	}
 
+	private Map<Class<?>, String> aliases = new HashMap<>();
 	private Set<String> excluded = EXCLUDED_DEFAULT;
 	private JsonGenerator gen;
 	private StringWriter writer = null;
+
+	@Override
+	public JsonBeanEncoder addAlias(Class<?> clazz, String alias) {
+		aliases.put(clazz, alias);
+		return this;
+	}
+
+	/**
+	 * Add a type to excude from encoding, usually because it cannot
+	 * be converted to JSON. Properties of such types should be
+	 * marked as {@link Transient}. However, sometimes base types
+	 * don't follow the rules.
+	 * 
+	 * @param className
+	 * @return the encoder for easy chaining
+	 */
+	public JsonBeanEncoder addExcluded(String className) {
+		if (excluded == EXCLUDED_DEFAULT) {
+			excluded = new HashSet<>(EXCLUDED_DEFAULT);
+		}
+		excluded.add(className);
+		return this;
+	}
 
 	/**
 	 * Create a new encoder using a default {@link JsonGenerator}. 
@@ -59,19 +180,19 @@ public class JsonEncoder {
 	 * @param out the sink
 	 * @return the encoder
 	 */
-	public static JsonEncoder create(Writer out) {
-		return new JsonEncoder(Json.createGenerator(out));
+	public static JsonBeanEncoder create(Writer out) {
+		return new JsonBeanEncoder(Json.createGenerator(out));
 	}
 
 	/**
 	 * Create a new encoder using a default {@link JsonGenerator}
 	 * that writes to an internally created {@link StringWriter}. 
-	 * The result can be obtained by invoking {@link #jsonString()}.
+	 * The result can be obtained by invoking {@link #toJson()}.
 	 * 
 	 * @return the encoder
 	 */
-	public static JsonEncoder create() {
-		return new JsonEncoder();
+	public static JsonBeanEncoder create() {
+		return new JsonBeanEncoder();
 	}
 
 	/**
@@ -80,48 +201,40 @@ public class JsonEncoder {
 	 * @param generator the generator
 	 * @return the encoder
 	 */
-	public static JsonEncoder create(JsonGenerator generator) {
-		return new JsonEncoder(generator);
+	public static JsonBeanEncoder create(JsonGenerator generator) {
+		return new JsonBeanEncoder(generator);
 	}
 
-	private JsonEncoder() {
+	private JsonBeanEncoder() {
 		writer = new StringWriter();
 		gen = Json.createGenerator(writer);
 	}
 
-	private JsonEncoder(JsonGenerator generator) {
+	private JsonBeanEncoder(JsonGenerator generator) {
 		gen = generator;
 	}
 
 	/**
 	 * Returns the text written to the output. Can only be used
-	 * if the encoder has been created with {@link #JsonEncoder()}.
+	 * if the encoder has been created with {@link #JsonBeanEncoder()}.
 	 * 
 	 * @return the result
 	 */
 	public String toJson() {
 		if (writer == null) {
 			throw new IllegalStateException(
-					"JsonEncoder has been created without a known writer.");
+					"JsonBeanEncoder has been created without a known writer.");
 		}
 		return writer.toString();
 	}
 	
-	public JsonEncoder addExcluded(String className) {
-		if (excluded == EXCLUDED_DEFAULT) {
-			excluded = new HashSet<>(EXCLUDED_DEFAULT);
-		}
-		excluded.add(className);
-		return this;
-	}
-
-	public JsonEncoder writeArray(Object... items) {
+	public JsonBeanEncoder writeArray(Object... items) {
 		doWriteObject(items, items.getClass());
 		gen.flush();
 		return this;
 	}
 	
-	public JsonEncoder writeObject(Object obj) {
+	public JsonBeanEncoder writeObject(Object obj) {
 		doWriteObject(obj, obj.getClass());
 		gen.flush();
 		return this;
@@ -141,6 +254,10 @@ public class JsonEncoder {
 			return;
 		} 
 		if (obj instanceof Number) {
+			if (obj instanceof Short) {
+				gen.write((Short)obj);
+				return;
+			}
 			if (obj instanceof Integer) {
 				gen.write((Integer)obj);
 				return;
@@ -204,7 +321,8 @@ public class JsonEncoder {
 			if (beanInfo.getPropertyDescriptors().length > 0) {
 				gen.writeStartObject();
 				if (!obj.getClass().equals(expectedType)) {
-					gen.write("class", obj.getClass().getName());
+					gen.write("class", aliases.computeIfAbsent(
+							obj.getClass(), k -> k.getName()));
 				}
 				for (PropertyDescriptor propDesc: 
 						beanInfo.getPropertyDescriptors()) {

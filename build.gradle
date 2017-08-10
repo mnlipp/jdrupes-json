@@ -14,7 +14,7 @@ buildscript {
 
 plugins {
     id "com.jfrog.bintray" version "1.7"
-	id "org.jdrupes.mdoclet" version "1.0.2"
+	id "org.jdrupes.mdoclet" version "1.0.3"
 }
 apply plugin: 'biz.aQute.bnd.builder'
 apply plugin: 'signing'
@@ -104,7 +104,7 @@ javadoc {
 	options.stylesheetFile(file("stylesheet.css"))
     options.addStringOption("bottom", file("misc/javadoc.bottom.txt").text)
     options.addStringOption("link", "http://docs.oracle.com/javase/8/docs/api/")
-    destinationDir = file("../jdrupes-json.gh-pages/javadoc")
+    destinationDir = file("../org.jdrupes.json.gh-pages/javadoc")
 }
 
 task sourcesJar(type: Jar) {
