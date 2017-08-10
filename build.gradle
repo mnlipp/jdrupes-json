@@ -61,9 +61,6 @@ sourceSets {
         java {
             srcDir 'src'
         }
-        resources {
-            srcDir 'resources'
-        }
     }
 
     test {
@@ -72,9 +69,6 @@ sourceSets {
         }
         groovy {
             srcDir 'test'
-        }
-        resources {
-            srcDir 'resources'
         }
     }
 }
