@@ -209,7 +209,7 @@ public class JsonBeanDecoder extends JsonCoder {
 				return (T)Float.valueOf(parser.getBigDecimal().floatValue());
 			}
 			if (expected.equals(Long.class) 
-					|| parser.equals(Long.TYPE)
+					|| expected.equals(Long.TYPE)
 					|| parser.isIntegralNumber()) {
 				return (T)Long.valueOf(parser.getLong());
 			}
@@ -366,7 +366,7 @@ public class JsonBeanDecoder extends JsonCoder {
 				inKeyState = false;
 				PropertyDescriptor property = beanProps.get(key);
 				if (property == null) {
-					new JsonDecodeException(parser.getLocation()
+					throw new JsonDecodeException(parser.getLocation()
 							+ ": No bean property for key " + key);
 				}
 				Object value = readValue(property.getPropertyType());
