@@ -224,9 +224,10 @@ public class JsonBeanDecoder extends JsonCoder {
 					+ ": Encountered unexpected array.");
 		case START_OBJECT:
 			return readObjectValue(expected);
+		default:
+			throw new JsonDecodeException(parser.getLocation()
+					+ ": Unexpected event.");
 		}
-		throw new JsonDecodeException(parser.getLocation()
-				+ ": Unexpected event.");
 	}
 	
 	@SuppressWarnings("unchecked")

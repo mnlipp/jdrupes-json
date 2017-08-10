@@ -14,7 +14,7 @@ import org.junit.Test;
 public class EncoderListTests {
 
 	public class Bean1 {
-		List<Bean2> items = new ArrayList<>();
+		private List<Bean2> items = new ArrayList<>();
 
 		public List<Bean2> getItems() {
 			return items;
