@@ -177,6 +177,12 @@ public class JsonBeanDecoder extends JsonCoder {
 		case VALUE_TRUE:
 			return (T)Boolean.TRUE;
 		case VALUE_STRING:
+			if (Enum.class.isAssignableFrom(expected)) {
+				@SuppressWarnings("rawtypes")
+				Class<Enum> enumClass = (Class<Enum>)expected;
+				return (T)Enum.valueOf(enumClass, parser.getString());
+			}
+			// fall through
 		case KEY_NAME:
 			return (T)parser.getString();
 		case VALUE_NUMBER:
