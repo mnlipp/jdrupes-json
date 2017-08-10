@@ -42,7 +42,7 @@ import javax.json.stream.JsonParser.Event;
 
 /**
  * Decoder for converting JSON to a Java object graph. The decoding
- * is based on the expected type passed to the decode methods.
+ * is based on the expected type passed to the decode method.
  * 
  * The convertion rules are as follows:
  *  * If the expected type is {@link Object} and the JSON input
@@ -67,19 +67,19 @@ import javax.json.stream.JsonParser.Event;
  *      
  *  A JSON object can have a "class" key. It must be the first key
  *  of the object. Its value is used to instantiate the Java object
- *  that in which the information of the JSON object is stored. If
+ *  in which the information of the JSON object is stored. If
  *  provided, the class specified by this key/value pair overrides 
- *  the class pass as expected class. It is checked, however, that the
+ *  the class passed as expected class. It is checked, however, that the
  *  specified class is assignable to the expected class.
  *  
  *  The value specified is first matched against the aliases that
  *  have been registered with the decoder 
- *  (@see {@link #addAlias(Class, String)}). If no match is found,
+ *  (see {@link #addAlias(Class, String)}). If no match is found,
  *  the converter set with {@link JsonBeanDecoder#setClassConverter(Function)}
  *  is used to convert the name to a class. The function defaults
- *  to {@link Class#forName(String)}. If the supplier does not
+ *  to {@link Class#forName(String)}. If the converter does not
  *  return a result, a {@link HashMap} is used as container for 
- *  the JSON object.
+ *  the values provided by the JSON object.
  */
 public class JsonBeanDecoder extends JsonCoder {
 
@@ -275,7 +275,7 @@ public class JsonBeanDecoder extends JsonCoder {
 			if (aliases.containsKey(provided)) {
 				cls = aliases.get(provided);
 			} else {
-				cls = classConverter.apply(provided).orElse(cls);
+				cls = classConverter.apply(provided).orElse(HashMap.class);
 			}
 		}
 		if (!expected.isAssignableFrom(cls)) {
