@@ -26,8 +26,6 @@ Provide-Capability: osgi.serviceloader; \
     osgi.serviceloader=org.jdrupes.json.plugin.ProtocolProvider
 
 
--includeresource: resources
-
 -fixupmessages: \
 	"Found source folder 'resources' that is not on bnd's source path", \
 	"Found source folder 'demo' that is not on bnd's source path", \
