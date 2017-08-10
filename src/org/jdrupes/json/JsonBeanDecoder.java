@@ -44,7 +44,7 @@ import javax.json.stream.JsonParser.Event;
  * Decoder for converting JSON to a Java object graph. The decoding
  * is based on the expected type passed to the decode methods.
  * 
- * The rules are as follows:
+ * The convertion rules are as follows:
  *  * If the expected type is {@link Object} and the JSON input
  *    is an array, the JSON array is
  *    converted to an {@link ArrayList} with element type {@link Object}.
@@ -65,12 +65,33 @@ import javax.json.stream.JsonParser.Event;
  *    The type of the properties are passed as expected types when
  *    parsing the values.
  *      
+ *  A JSON object can have a "class" key. It must be the first key
+ *  of the object. Its value is used to instantiate the Java object
+ *  that in which the information of the JSON object is stored. If
+ *  provided, the class specified by this key/value pair overrides 
+ *  the class pass as expected class. It is checked, however, that the
+ *  specified class is assignable to the expected class.
+ *  
+ *  The value specified is first matched against the aliases that
+ *  have been registered with the decoder 
+ *  (@see {@link #addAlias(Class, String)}). If no match is found,
+ *  the converter set with {@link JsonBeanDecoder#setClassConverter(Function)}
+ *  is used to convert the name to a class. The function defaults
+ *  to {@link Class#forName(String)}. If the supplier does not
+ *  return a result, a {@link HashMap} is used as container for 
+ *  the JSON object.
  */
 public class JsonBeanDecoder extends JsonCoder {
 
 	private Map<String,Class<?>> aliases = new HashMap<>();
-	private Function<String,Optional<Class<?>>> classSupplier 
-		= name -> Optional.empty();
+	private Function<String,Optional<Class<?>>> classConverter 
+		= name -> {
+			try {
+				return Optional.ofNullable(Class.forName(name));
+			} catch (ClassNotFoundException e) {
+				return Optional.empty();
+			}
+		};
 	private JsonParser parser;
 	
 	@Override
@@ -79,9 +100,17 @@ public class JsonBeanDecoder extends JsonCoder {
 		return this;
 	}
 
-	public JsonBeanDecoder setClassSupplier(
-			Function<String,Optional<Class<?>>> supplier) {
-		this.classSupplier = supplier;
+	/**
+	 * Sets the converter that maps a specified "class" to an actual Java
+	 * {@link Class}. If it does not return a class, a {@link HashMap} is 
+	 * used to store the data of the JSON object. 
+	 * 
+	 * @param converter the converter to use
+	 * @return the conversion result
+	 */
+	public JsonBeanDecoder setClassConverter(
+			Function<String,Optional<Class<?>>> converter) {
+		this.classConverter = converter;
 		return this;
 	}
 	
@@ -246,7 +275,7 @@ public class JsonBeanDecoder extends JsonCoder {
 			if (aliases.containsKey(provided)) {
 				cls = aliases.get(provided);
 			} else {
-				cls = classSupplier.apply(provided).orElse(cls);
+				cls = classConverter.apply(provided).orElse(cls);
 			}
 		}
 		if (!expected.isAssignableFrom(cls)) {
