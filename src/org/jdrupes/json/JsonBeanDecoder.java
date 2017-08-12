@@ -22,6 +22,8 @@ import java.beans.BeanInfo;
 import java.beans.IntrospectionException;
 import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
+import java.beans.PropertyEditor;
+import java.beans.PropertyEditorManager;
 import java.io.Reader;
 import java.io.StringReader;
 import java.lang.reflect.Array;
@@ -162,6 +164,8 @@ public class JsonBeanDecoder extends JsonCoder {
 	public <T> T readArray(Class<T> expected) throws JsonDecodeException {
 		return readValue(expected);
 	}
+
+	private static final Object END_VALUE = new Object();
 	
 	@SuppressWarnings("unchecked")
 	private <T> T readValue(Class<T> expected) 
@@ -169,7 +173,7 @@ public class JsonBeanDecoder extends JsonCoder {
 		switch(parser.next()) {
 		case END_ARRAY:
 		case END_OBJECT:
-			return null;
+			return (T)END_VALUE;
 		case VALUE_NULL:
 			return null;
 		case VALUE_FALSE:
@@ -177,6 +181,12 @@ public class JsonBeanDecoder extends JsonCoder {
 		case VALUE_TRUE:
 			return (T)Boolean.TRUE;
 		case VALUE_STRING:
+			PropertyEditor propertyEditor 
+				= PropertyEditorManager.findEditor(expected);
+			if (propertyEditor != null) {
+				propertyEditor.setAsText(parser.getString());
+				return (T)propertyEditor.getValue();
+			}
 			if (Enum.class.isAssignableFrom(expected)) {
 				@SuppressWarnings("rawtypes")
 				Class<Enum> enumClass = (Class<Enum>)expected;
@@ -251,7 +261,7 @@ public class JsonBeanDecoder extends JsonCoder {
 		}
 		while (true) {
 			T item = (T)readValue(itemType);
-			if (item == null) {
+			if (item == END_VALUE) {
 				break;
 			}
 			items.add(item);

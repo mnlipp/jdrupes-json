@@ -277,6 +277,13 @@ public class JsonBeanEncoder extends JsonCoder {
 			gen.write((Double)obj);
 			return;
 		}
+		PropertyEditor propertyEditor = PropertyEditorManager
+		        .findEditor(obj.getClass());
+		if (propertyEditor != null) {
+			propertyEditor.setValue(obj);
+			gen.write(propertyEditor.getAsText());
+			return;
+		}
 		if (obj instanceof Object[]) {
 			gen.writeStartArray();
 			Class<?> compType = null;
@@ -306,13 +313,6 @@ public class JsonBeanEncoder extends JsonCoder {
 				doWriteObject(e.getValue(), null);
 			}
 			gen.writeEnd();
-			return;
-		}
-		PropertyEditor propertyEditor 
-			= PropertyEditorManager.findEditor(obj.getClass());
-		if (propertyEditor != null) {
-			propertyEditor.setValue(obj);
-			gen.write(propertyEditor.getAsText());
 			return;
 		}
 		try {
