@@ -403,8 +403,7 @@ public class JsonBeanDecoder extends JsonCoder {
 				writeMethod.invoke(obj, value);
 				return;
 			}
-			Field propField = obj.getClass()
-					.getDeclaredField(property.getName());
+			Field propField = findField(obj.getClass(), property.getName());
 			if (!propField.isAccessible()) {
 				propField.setAccessible(true);
 			}
@@ -415,5 +414,16 @@ public class JsonBeanDecoder extends JsonCoder {
 					+ ": Cannot write property " + property.getName());
 		}
 	}
-	
+
+	private Field findField(Class<?> cls, String fieldName) 
+			throws NoSuchFieldException {
+		if (cls.equals(Object.class)) {
+			throw new NoSuchFieldException();
+		}
+		try {
+			return cls.getDeclaredField(fieldName);
+		} catch (NoSuchFieldException e) {
+			return findField(cls.getSuperclass(), fieldName);
+		}
+	}
 }
