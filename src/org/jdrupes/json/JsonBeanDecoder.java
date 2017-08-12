@@ -27,7 +27,9 @@ import java.beans.PropertyEditorManager;
 import java.io.Reader;
 import java.io.StringReader;
 import java.lang.reflect.Array;
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayList;
@@ -381,13 +383,7 @@ public class JsonBeanDecoder extends JsonCoder {
 							+ ": No bean property for key " + key);
 				}
 				Object value = readValue(property.getPropertyType());
-				try {
-					property.getWriteMethod().invoke(result, value);
-				} catch (IllegalAccessException | IllegalArgumentException
-				        | InvocationTargetException e) {
-					throw new JsonDecodeException(parser.getLocation()
-							+ ": Cannot write property " + key);
-				}
+				setProperty(result, property, value);
 				break;
 				
 			default:
@@ -397,6 +393,27 @@ public class JsonBeanDecoder extends JsonCoder {
 		}
 		return result;
 		
+	}
+
+	private <T> void setProperty(T obj, PropertyDescriptor property,
+	        Object value) throws JsonDecodeException {
+		try {
+			Method writeMethod = property.getWriteMethod();
+			if (writeMethod != null) {
+				writeMethod.invoke(obj, value);
+				return;
+			}
+			Field propField = obj.getClass()
+					.getDeclaredField(property.getName());
+			if (!propField.isAccessible()) {
+				propField.setAccessible(true);
+			}
+			propField.set(obj, value);
+		} catch (IllegalAccessException | IllegalArgumentException
+		        | InvocationTargetException | NoSuchFieldException e) {
+			throw new JsonDecodeException(parser.getLocation()
+					+ ": Cannot write property " + property.getName());
+		}
 	}
 	
 }

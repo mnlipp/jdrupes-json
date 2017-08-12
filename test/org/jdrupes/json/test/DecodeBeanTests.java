@@ -100,4 +100,27 @@ public class DecodeBeanTests {
 		assertTrue(((List<?>)result.get("numbers")).get(1) instanceof SpecialNumber);
 	}
 
+	public static class RoBean {
+		
+		private int value = 0;
+		
+		public RoBean() {
+		}
+
+		public RoBean(int value) {
+			this.value = value;
+		}
+
+		public int getValue() {
+			return value;
+		}
+	}
+
+	@Test
+	public void testRoBean() throws JsonDecodeException {
+		String json = "{ \"value\": 42 }";
+		RoBean result = JsonBeanDecoder.create(json)
+			.readObject(RoBean.class);
+		assertEquals(42, result.getValue());
+	}
 }
