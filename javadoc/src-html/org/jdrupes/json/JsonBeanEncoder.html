@@ -285,42 +285,42 @@
 <span class="sourceLineNo">277</span>                        gen.write((Double)obj);<a name="line.277"></a>
 <span class="sourceLineNo">278</span>                        return;<a name="line.278"></a>
 <span class="sourceLineNo">279</span>                }<a name="line.279"></a>
-<span class="sourceLineNo">280</span>                if (obj instanceof Object[]) {<a name="line.280"></a>
-<span class="sourceLineNo">281</span>                        gen.writeStartArray();<a name="line.281"></a>
-<span class="sourceLineNo">282</span>                        Class&lt;?&gt; compType = null;<a name="line.282"></a>
-<span class="sourceLineNo">283</span>                        if (expectedType != null &amp;&amp; expectedType.isArray()) {<a name="line.283"></a>
-<span class="sourceLineNo">284</span>                                compType = expectedType.getComponentType();<a name="line.284"></a>
-<span class="sourceLineNo">285</span>                        }<a name="line.285"></a>
-<span class="sourceLineNo">286</span>                        for (Object item: (Object[])obj) {<a name="line.286"></a>
-<span class="sourceLineNo">287</span>                                doWriteObject(item, compType);<a name="line.287"></a>
-<span class="sourceLineNo">288</span>                        }<a name="line.288"></a>
-<span class="sourceLineNo">289</span>                        gen.writeEnd();<a name="line.289"></a>
-<span class="sourceLineNo">290</span>                        return;<a name="line.290"></a>
-<span class="sourceLineNo">291</span>                }<a name="line.291"></a>
-<span class="sourceLineNo">292</span>                if (obj instanceof Collection) {<a name="line.292"></a>
-<span class="sourceLineNo">293</span>                        gen.writeStartArray();<a name="line.293"></a>
-<span class="sourceLineNo">294</span>                        for (Object item: (Collection&lt;?&gt;)obj) {<a name="line.294"></a>
-<span class="sourceLineNo">295</span>                                doWriteObject(item, null);<a name="line.295"></a>
-<span class="sourceLineNo">296</span>                        }<a name="line.296"></a>
-<span class="sourceLineNo">297</span>                        gen.writeEnd();<a name="line.297"></a>
-<span class="sourceLineNo">298</span>                        return;<a name="line.298"></a>
-<span class="sourceLineNo">299</span>                }<a name="line.299"></a>
-<span class="sourceLineNo">300</span>                if (obj instanceof Map) {<a name="line.300"></a>
-<span class="sourceLineNo">301</span>                        @SuppressWarnings("unchecked")<a name="line.301"></a>
-<span class="sourceLineNo">302</span>                        Map&lt;String,Object&gt; map = (Map&lt;String,Object&gt;)obj;<a name="line.302"></a>
-<span class="sourceLineNo">303</span>                        gen.writeStartObject();<a name="line.303"></a>
-<span class="sourceLineNo">304</span>                        for (Map.Entry&lt;String, Object&gt; e: map.entrySet()) {<a name="line.304"></a>
-<span class="sourceLineNo">305</span>                                gen.writeKey(e.getKey());<a name="line.305"></a>
-<span class="sourceLineNo">306</span>                                doWriteObject(e.getValue(), null);<a name="line.306"></a>
-<span class="sourceLineNo">307</span>                        }<a name="line.307"></a>
-<span class="sourceLineNo">308</span>                        gen.writeEnd();<a name="line.308"></a>
-<span class="sourceLineNo">309</span>                        return;<a name="line.309"></a>
-<span class="sourceLineNo">310</span>                }<a name="line.310"></a>
-<span class="sourceLineNo">311</span>                PropertyEditor propertyEditor <a name="line.311"></a>
-<span class="sourceLineNo">312</span>                        = PropertyEditorManager.findEditor(obj.getClass());<a name="line.312"></a>
-<span class="sourceLineNo">313</span>                if (propertyEditor != null) {<a name="line.313"></a>
-<span class="sourceLineNo">314</span>                        propertyEditor.setValue(obj);<a name="line.314"></a>
-<span class="sourceLineNo">315</span>                        gen.write(propertyEditor.getAsText());<a name="line.315"></a>
+<span class="sourceLineNo">280</span>                PropertyEditor propertyEditor = PropertyEditorManager<a name="line.280"></a>
+<span class="sourceLineNo">281</span>                        .findEditor(obj.getClass());<a name="line.281"></a>
+<span class="sourceLineNo">282</span>                if (propertyEditor != null) {<a name="line.282"></a>
+<span class="sourceLineNo">283</span>                        propertyEditor.setValue(obj);<a name="line.283"></a>
+<span class="sourceLineNo">284</span>                        gen.write(propertyEditor.getAsText());<a name="line.284"></a>
+<span class="sourceLineNo">285</span>                        return;<a name="line.285"></a>
+<span class="sourceLineNo">286</span>                }<a name="line.286"></a>
+<span class="sourceLineNo">287</span>                if (obj instanceof Object[]) {<a name="line.287"></a>
+<span class="sourceLineNo">288</span>                        gen.writeStartArray();<a name="line.288"></a>
+<span class="sourceLineNo">289</span>                        Class&lt;?&gt; compType = null;<a name="line.289"></a>
+<span class="sourceLineNo">290</span>                        if (expectedType != null &amp;&amp; expectedType.isArray()) {<a name="line.290"></a>
+<span class="sourceLineNo">291</span>                                compType = expectedType.getComponentType();<a name="line.291"></a>
+<span class="sourceLineNo">292</span>                        }<a name="line.292"></a>
+<span class="sourceLineNo">293</span>                        for (Object item: (Object[])obj) {<a name="line.293"></a>
+<span class="sourceLineNo">294</span>                                doWriteObject(item, compType);<a name="line.294"></a>
+<span class="sourceLineNo">295</span>                        }<a name="line.295"></a>
+<span class="sourceLineNo">296</span>                        gen.writeEnd();<a name="line.296"></a>
+<span class="sourceLineNo">297</span>                        return;<a name="line.297"></a>
+<span class="sourceLineNo">298</span>                }<a name="line.298"></a>
+<span class="sourceLineNo">299</span>                if (obj instanceof Collection) {<a name="line.299"></a>
+<span class="sourceLineNo">300</span>                        gen.writeStartArray();<a name="line.300"></a>
+<span class="sourceLineNo">301</span>                        for (Object item: (Collection&lt;?&gt;)obj) {<a name="line.301"></a>
+<span class="sourceLineNo">302</span>                                doWriteObject(item, null);<a name="line.302"></a>
+<span class="sourceLineNo">303</span>                        }<a name="line.303"></a>
+<span class="sourceLineNo">304</span>                        gen.writeEnd();<a name="line.304"></a>
+<span class="sourceLineNo">305</span>                        return;<a name="line.305"></a>
+<span class="sourceLineNo">306</span>                }<a name="line.306"></a>
+<span class="sourceLineNo">307</span>                if (obj instanceof Map) {<a name="line.307"></a>
+<span class="sourceLineNo">308</span>                        @SuppressWarnings("unchecked")<a name="line.308"></a>
+<span class="sourceLineNo">309</span>                        Map&lt;String,Object&gt; map = (Map&lt;String,Object&gt;)obj;<a name="line.309"></a>
+<span class="sourceLineNo">310</span>                        gen.writeStartObject();<a name="line.310"></a>
+<span class="sourceLineNo">311</span>                        for (Map.Entry&lt;String, Object&gt; e: map.entrySet()) {<a name="line.311"></a>
+<span class="sourceLineNo">312</span>                                gen.writeKey(e.getKey());<a name="line.312"></a>
+<span class="sourceLineNo">313</span>                                doWriteObject(e.getValue(), null);<a name="line.313"></a>
+<span class="sourceLineNo">314</span>                        }<a name="line.314"></a>
+<span class="sourceLineNo">315</span>                        gen.writeEnd();<a name="line.315"></a>
 <span class="sourceLineNo">316</span>                        return;<a name="line.316"></a>
 <span class="sourceLineNo">317</span>                }<a name="line.317"></a>
 <span class="sourceLineNo">318</span>                try {<a name="line.318"></a>
