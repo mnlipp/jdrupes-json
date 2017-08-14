@@ -33,7 +33,7 @@ new Processor().withCloseable { processor ->
 group = 'org.jdrupes.json'
 description = "JDrupes JSON library"
 
-version = bnd.base_version + "-SNAPSHOT"
+version = bnd.base_version //  + "-SNAPSHOT"
 
 archivesBaseName = 'json'
 
