@@ -33,7 +33,7 @@ new Processor().withCloseable { processor ->
 group = 'org.jdrupes.json'
 description = "JDrupes JSON library"
 
-version = bnd.base_version //  + "-SNAPSHOT"
+version = bnd.base_version + "-SNAPSHOT"
 
 archivesBaseName = 'json'
 
@@ -198,10 +198,12 @@ bintray {
 	publications = ['mavenJava']
 	publish = true
 	pkg {
-		repo = "org.jdrupes"
-		name = "json"
+		repo = "jdrupes"
+		name = project.group
 		version {
 			 name = project.version
+			 licenses = ['LGPL-3.0']
+			 vcsUrl = 'https://github.com/mnlipp/jdrupes-json'
 			 gpg {
 				 sign = true
 			 }
