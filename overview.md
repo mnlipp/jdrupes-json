@@ -4,7 +4,7 @@ JDrupes JSON Library
 ==================
 
 This small library is based (and depends) on the JSON API as defined in 
-[JSR 353](http://jcp.org/en/jsr/detail?id=353) (`javax.json`).
+[JSR 374](https://jcp.org/en/jsr/detail?id=374) (`javax.json`).
 
 When XML support was included in the JDK, JavaBeans got their
 {@link java.beans.XMLEncoder} and {@link java.beans.XMLDecoder}.
