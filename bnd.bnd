@@ -1,30 +1,19 @@
-Bundle-Name: JDrupes HTTP Codec
+Bundle-Name: JDrupes JSON Library
 Bundle-SymbolicName: org.jdrupes.json
-Bundle-Version: 1.0.1.${tstamp}
-Bundle-Copyright: Michael N. Lipp (c) 2016
+Bundle-Version: 1.0.2.${tstamp}
+Bundle-Copyright: Michael N. Lipp (c) 2017
 Bundle-License: http://www.gnu.org/licenses/lgpl-3.0.txt
 
 base_version = ${versionmask;===;${Bundle-Version}}
 # This is used as the general API version for all packages.
 # This being a library, individual API versions for packages don't 
 # really make sense.
-api_version = 1.0.1.${tstamp}
+api_version = 1.0.0.${tstamp}
 
 -sources: true
 -runee: JavaSE-1.8
 -dsannotations: 
 testbin=bin
-
-Require-Capability: \
-	osgi.extender; filter:="(osgi.extender=osgi.serviceloader.registrar)", \
-	osgi.extender; filter:="(osgi.extender=osgi.serviceloader.processor)", \
-    osgi.serviceloader; \
-        filter:="(osgi.serviceloader=org.jdrupes.json.plugin.ProtocolProvider)"; \
-    	    cardinality:=multiple
-
-Provide-Capability: osgi.serviceloader; \
-    osgi.serviceloader=org.jdrupes.json.plugin.ProtocolProvider
-
 
 -fixupmessages: \
 	"Found source folder 'resources' that is not on bnd's source path", \
