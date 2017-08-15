@@ -10,7 +10,7 @@ JDrupes JSON library
 
 The goal of this package is to provide an OSGi compliant utility library for 
 working with the JSON API as defined in 
-[JSR 353](http://jcp.org/en/jsr/detail?id=353).
+[JSR 374](https://jcp.org/en/jsr/detail?id=374).
 
 Currently, the library provides an encoder and decoder for Java Beans.
 
