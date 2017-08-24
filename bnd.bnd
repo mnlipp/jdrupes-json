@@ -15,6 +15,15 @@ api_version = 1.0.0.${tstamp}
 -dsannotations: 
 testbin=bin
 
+-plugin.1.Released:  \
+    aQute.bnd.repository.maven.pom.provider.BndPomRepository; \
+        releaseUrls=https://repo1.maven.org/maven2/; \
+        query='q=g=%22org.jdrupes.json%22'; \
+        name=Released;
+        
+-baseline: *
+-baselinerepository: Released
+
 -fixupmessages: \
 	"Found source folder 'resources' that is not on bnd's source path", \
 	"Found source folder 'demo' that is not on bnd's source path", \
