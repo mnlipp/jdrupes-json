@@ -1,5 +1,6 @@
 package org.jdrupes.json.test;
 
+import java.beans.ConstructorProperties;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -123,4 +124,62 @@ public class DecodeBeanTests {
 			.readObject(RoBean.class);
 		assertEquals(42, result.getValue());
 	}
+	
+	public static class ImmutablePoint {
+		
+		private int posX = 0;
+		private int posY = 0;
+		private String name = null;
+		public boolean xyConstCalled = false;
+		public boolean allConstCalled = false;
+
+		// Not to be picked
+		@ConstructorProperties({"name", "x", "y"})
+		public ImmutablePoint(String name, int posX, int posY) {
+			this(posX, posY);
+			this.name = name;
+			allConstCalled = true;
+		}
+
+		@ConstructorProperties({"x", "y"})
+		public ImmutablePoint(int posX, int posY) {
+			this.posX = posX;
+			this.posY = posY;
+			xyConstCalled = true;
+		}
+
+		public String getName() {
+			return name;
+		}
+		
+		public int getX() {
+			return posX;
+		}
+
+		public int getY() {
+			return posY;
+		}
+		
+	}
+
+	@Test
+	public void testImmutablePoint() throws JsonDecodeException {
+		String json = "{ \"x\": 1, \"y\": 2 }";
+		ImmutablePoint result = JsonBeanDecoder.create(json)
+			.readObject(ImmutablePoint.class);
+		assertTrue(result.xyConstCalled);
+		assertFalse(result.allConstCalled);
+		assertEquals(1, result.getX());
+		assertEquals(2, result.getY());
+		assertNull(result.getName());
+		
+		json = "{ \"name\": \"point\", \"x\": 1, \"y\": 2 }";
+		result = JsonBeanDecoder.create(json)
+			.readObject(ImmutablePoint.class);
+		assertEquals(1, result.getX());
+		assertEquals(2, result.getY());
+		assertEquals("point", result.getName());
+		assertTrue(result.allConstCalled);
+	}
+	
 }

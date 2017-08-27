@@ -139,6 +139,8 @@ publishing {
 // MavenPublishing (original), still needed for remote 
 
 uploadArchives {
+	dependsOn baseline
+	
 	repositories {
 		mavenDeployer {
 			beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }

@@ -19,6 +19,7 @@
 package org.jdrupes.json;
 
 import java.beans.BeanInfo;
+import java.beans.ConstructorProperties;
 import java.beans.IntrospectionException;
 import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
@@ -27,17 +28,22 @@ import java.beans.PropertyEditorManager;
 import java.io.Reader;
 import java.io.StringReader;
 import java.lang.reflect.Array;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.SortedMap;
+import java.util.TreeMap;
 import java.util.function.Function;
 
 import javax.json.Json;
@@ -65,9 +71,19 @@ import javax.json.stream.JsonParser.Event;
  *  * If the expected type is neither of the above, it is assumed
  *    to be a JavaBean and the JSON input must be a JSON object.
  *    The key/value pairs of the JSON input are interpreted as properties
- *    of the JavaBean and set if the values have successfully been parsed.
+ *    of the JavaBean and set if the values have been parsed successfully.
  *    The type of the properties are passed as expected types when
- *    parsing the values.
+ *    parsing the values. 
+ *    
+ *    Constructors with {@link ConstructorProperties}
+ *    are used if all required values are available. Else, if no setter is
+ *    available for a key/value pair, an attempt
+ *    is made to gain access to a private field with the name of the
+ *    key and assign the value to that field. Note thatthis  will fail
+ *    when using Java 9 modules unless you explicitly grant the decoder 
+ *    access to private fields. So defining a constructor with
+ *    a {@link ConstructorProperties} annotation and all immutable
+ *    properties as parameters is strongly recommended.
  *      
  *  A JSON object can have a "class" key. It must be the first key
  *  of the object. Its value is used to instantiate the Java object
@@ -287,42 +303,43 @@ public class JsonBeanDecoder extends JsonCoder {
 					+ ": Unexpected Json event " + event);
 		}
 		String key = parser.getString();		
-		Class<?> cls = expected;
+		Class<?> actualCls = expected;
 		if ("class".equals(key)) {
 			parser.next();
 			String provided = parser.getString();
 			if (aliases.containsKey(provided)) {
-				cls = aliases.get(provided);
+				actualCls = aliases.get(provided);
 			} else {
-				cls = classConverter.apply(provided).orElse(HashMap.class);
+				actualCls = classConverter.apply(provided).orElse(HashMap.class);
 			}
 		}
-		if (!expected.isAssignableFrom(cls)) {
+		if (!expected.isAssignableFrom(actualCls)) {
 			throw new JsonDecodeException(parser.getLocation()
 					+ ": Expected " + expected.getName()
-					+ " found " + cls.getName());
+					+ " found " + actualCls.getName());
 		}
-		if (cls.equals(Object.class)) {
-			cls = HashMap.class;
+		if (actualCls.equals(Object.class)) {
+			actualCls = HashMap.class;
 		}
-		T result = null;
-		try {
-			@SuppressWarnings("unchecked")
-			T res = (T)cls.newInstance();
-			result = res;
-		} catch (InstantiationException
-				| IllegalAccessException e) {
-			throw new JsonDecodeException(parser.getLocation()
-					+ ": Cannot create " + cls.getName(), e);
-		}
-		if (result instanceof Map) {
+		if (Map.class.isAssignableFrom(actualCls)) {
+			T result = null;
+			try {
+				@SuppressWarnings("unchecked")
+				T res = (T)actualCls.newInstance();
+				result = res;
+			} catch (InstantiationException
+					| IllegalAccessException e) {
+				throw new JsonDecodeException(parser.getLocation()
+						+ ": Cannot create " + actualCls.getName(), e);
+			}
 			@SuppressWarnings("unchecked")
 			Map<String,?> map = (Map<String,?>)result;
-			@SuppressWarnings("unchecked")
-			T res = (T)objectToMap(map, !"class".equals(key));
-			return res;
+			objectToMap(map, !"class".equals(key));
+			return result;
 		}
-		return objectToBean(result, !"class".equals(key));
+		@SuppressWarnings("unchecked")
+		Class<T> beanCls = (Class<T>)actualCls;
+		return objectToBean(beanCls, !"class".equals(key));
 	}
 
 	private Map<String,?> objectToMap(Map<String,?> result, boolean inKeyState)
@@ -352,21 +369,79 @@ public class JsonBeanDecoder extends JsonCoder {
 		
 	}
 	
-	private <T> T objectToBean(T result, boolean inKeyState)
+	private <T> T objectToBean(Class<T> beanCls, boolean inKeyState)
 			throws JsonDecodeException {
 		Map<String,PropertyDescriptor> beanProps = new HashMap<>();
 		try {
-			BeanInfo beanInfo = Introspector.getBeanInfo(
-					result.getClass(), Object.class);
+			BeanInfo beanInfo = Introspector.getBeanInfo(beanCls, Object.class);
 			for (PropertyDescriptor 
 					p: beanInfo.getPropertyDescriptors()) {
 				beanProps.put(p.getName(), p);
 			}
 		} catch (IntrospectionException e) {
 			throw new JsonDecodeException(parser.getLocation()
-					+ ": Cannot introspect " + result.getClass());
+					+ ": Cannot introspect " + beanCls);
 		}
 		
+		// Get properties as map first.
+		Map<String, Object> propsMap = parseProperties(beanProps, inKeyState);
+		
+		// Prepare result, using constructor with parameters if available.
+		T result = createBean(beanCls, propsMap);
+
+		// Set (remaining) properties.
+		for (Map.Entry<String, ?> e: propsMap.entrySet()) {
+			PropertyDescriptor property = beanProps.get(e.getKey());
+			if (property == null) {
+				throw new JsonDecodeException(parser.getLocation()
+						+ ": No bean property for key " + e.getKey());
+			}
+			setProperty(result, property, e.getValue());
+		}
+		return result;
+	}
+
+	private <T> T createBean(Class<T> beanCls, Map<String, Object> propsMap)
+			throws JsonDecodeException {
+		try {
+			SortedMap<ConstructorProperties, Constructor<T>> cons
+				= new TreeMap<>(Comparator.comparingInt(
+						(ConstructorProperties cp) -> cp.value().length)
+						.reversed());
+			for (Constructor<?> c : beanCls.getConstructors()) {
+				ConstructorProperties[] allCps = c.getAnnotationsByType(
+				        ConstructorProperties.class);
+				if (allCps.length > 0) {
+					@SuppressWarnings("unchecked")
+					Constructor<T> beanConstructor = (Constructor<T>)c; 
+					cons.put(allCps[0], beanConstructor);
+				}
+			}
+			for (Map.Entry<ConstructorProperties, Constructor<T>> 
+				e: cons.entrySet()) {
+				String[] conProps = e.getKey().value();
+				if (propsMap.keySet().containsAll(Arrays.asList(conProps))) {
+					Object[] args = new Object[conProps.length];
+					for (int i = 0; i < conProps.length; i++) {
+						args[i] = propsMap.remove(conProps[i]);
+					}
+					T result = e.getValue().newInstance(args);
+					return result;
+				}
+			}
+			
+			return beanCls.newInstance();
+		} catch (InstantiationException | IllegalAccessException 
+				| IllegalArgumentException | InvocationTargetException e) {
+			throw new JsonDecodeException(parser.getLocation()
+			        + ": Cannot create " + beanCls.getName(), e);
+		}
+	}
+
+	private Map<String, Object> parseProperties(
+	        Map<String, PropertyDescriptor> beanProps, boolean inKeyState)
+	        throws JsonDecodeException {
+		Map<String,Object> map = new HashMap<>();
 		whileLoop:
 		while (true) {
 			Event event = inKeyState ? Event.KEY_NAME : parser.next();
@@ -383,7 +458,7 @@ public class JsonBeanDecoder extends JsonCoder {
 							+ ": No bean property for key " + key);
 				}
 				Object value = readValue(property.getPropertyType());
-				setProperty(result, property, value);
+				map.put(key, value);
 				break;
 				
 			default:
@@ -391,10 +466,9 @@ public class JsonBeanDecoder extends JsonCoder {
 						+ ": Unexpected Json event " + event);
 			}
 		}
-		return result;
-		
+		return map;
 	}
-
+	
 	private <T> void setProperty(T obj, PropertyDescriptor property,
 	        Object value) throws JsonDecodeException {
 		try {
@@ -411,7 +485,7 @@ public class JsonBeanDecoder extends JsonCoder {
 		} catch (IllegalAccessException | IllegalArgumentException
 		        | InvocationTargetException | NoSuchFieldException e) {
 			throw new JsonDecodeException(parser.getLocation()
-					+ ": Cannot write property " + property.getName());
+					+ ": Cannot write property " + property.getName(), e);
 		}
 	}
 
