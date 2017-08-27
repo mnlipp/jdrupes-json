@@ -214,34 +214,7 @@ public class JsonBeanDecoder extends JsonCoder {
 		case KEY_NAME:
 			return (T)parser.getString();
 		case VALUE_NUMBER:
-			if (expected.equals(Byte.class) 
-					|| expected.equals(Byte.TYPE)) {
-				return (T)Byte.valueOf((byte)parser.getInt());
-			}
-			if (expected.equals(Short.class) 
-					|| expected.equals(Short.TYPE)) {
-				return (T)Short.valueOf((short)parser.getInt());
-			}
-			if (expected.equals(Integer.class) 
-					|| expected.equals(Integer.TYPE)) {
-				return (T)Integer.valueOf(parser.getInt());
-			}
-			if (expected.equals(BigInteger.class)) {
-				return (T)parser.getBigDecimal().toBigInteger();
-			}
-			if (expected.equals(BigDecimal.class)) {
-				return (T)parser.getBigDecimal();
-			}
-			if (expected.equals(Float.class)
-					|| expected.equals(Float.TYPE)) {
-				return (T)Float.valueOf(parser.getBigDecimal().floatValue());
-			}
-			if (expected.equals(Long.class) 
-					|| expected.equals(Long.TYPE)
-					|| parser.isIntegralNumber()) {
-				return (T)Long.valueOf(parser.getLong());
-			}
-			return (T)Double.valueOf(parser.getBigDecimal().doubleValue());
+			return readNumber(expected);
 		case START_ARRAY:
 			if (expected.isArray() 
 					|| Collection.class.isAssignableFrom(expected)
@@ -256,6 +229,38 @@ public class JsonBeanDecoder extends JsonCoder {
 			throw new JsonDecodeException(parser.getLocation()
 					+ ": Unexpected event.");
 		}
+	}
+
+	@SuppressWarnings("unchecked")
+	private <T> T readNumber(Class<T> expected) {
+		if (expected.equals(Byte.class) 
+				|| expected.equals(Byte.TYPE)) {
+			return (T)Byte.valueOf((byte)parser.getInt());
+		}
+		if (expected.equals(Short.class) 
+				|| expected.equals(Short.TYPE)) {
+			return (T)Short.valueOf((short)parser.getInt());
+		}
+		if (expected.equals(Integer.class) 
+				|| expected.equals(Integer.TYPE)) {
+			return (T)Integer.valueOf(parser.getInt());
+		}
+		if (expected.equals(BigInteger.class)) {
+			return (T)parser.getBigDecimal().toBigInteger();
+		}
+		if (expected.equals(BigDecimal.class)) {
+			return (T)parser.getBigDecimal();
+		}
+		if (expected.equals(Float.class)
+				|| expected.equals(Float.TYPE)) {
+			return (T)Float.valueOf(parser.getBigDecimal().floatValue());
+		}
+		if (expected.equals(Long.class) 
+				|| expected.equals(Long.TYPE)
+				|| parser.isIntegralNumber()) {
+			return (T)Long.valueOf(parser.getLong());
+		}
+		return (T)Double.valueOf(parser.getBigDecimal().doubleValue());
 	}
 	
 	@SuppressWarnings("unchecked")
