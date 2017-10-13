@@ -36,3 +36,9 @@ or [close to master](https://mnlipp.github.io/jdrupes-json/javadoc/index.html)).
 
 Contributions and bug reports are welcome. Please provide them as
 GitHub issues.
+
+
+<!-- Piwik Image Tracker-->
+<img src="https://piwik.mnl.de/piwik.php?idsite=10&rec=1" style="border:0" alt="" />
+<!-- End Piwik -->
+
