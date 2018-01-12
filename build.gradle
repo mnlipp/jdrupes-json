@@ -8,7 +8,7 @@ buildscript {
 		maven { url 'https://jitpack.io' }
     }
     dependencies {
-        classpath 'biz.aQute.bnd:biz.aQute.bnd.gradle:3.3.0'
+        classpath 'biz.aQute.bnd:biz.aQute.bnd.gradle:3.5.0'
     }
 }
 
@@ -33,7 +33,7 @@ new Processor().withCloseable { processor ->
 group = 'org.jdrupes.json'
 description = "JDrupes JSON library"
 
-version = bnd.base_version + "-SNAPSHOT"
+version = bnd.base_version // + "-SNAPSHOT"
 
 archivesBaseName = 'json'
 
