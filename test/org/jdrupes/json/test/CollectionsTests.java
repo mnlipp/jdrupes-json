@@ -1,8 +1,6 @@
 package org.jdrupes.json.test;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.Arrays;
@@ -13,9 +11,6 @@ import java.util.Set;
 import org.jdrupes.json.JsonBeanDecoder;
 import org.jdrupes.json.JsonBeanEncoder;
 import org.jdrupes.json.JsonDecodeException;
-import org.jdrupes.json.test.DecodeBeanTests.ImmutablePoint;
-import org.jdrupes.json.test.EncoderListTests.Bean1;
-import org.jdrupes.json.test.EncoderListTests.Bean2;
 import org.junit.Test;
 
 public class CollectionsTests {
