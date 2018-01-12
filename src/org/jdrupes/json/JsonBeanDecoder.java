@@ -37,11 +37,12 @@ import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.function.Function;
@@ -267,16 +268,25 @@ public class JsonBeanDecoder extends JsonCoder {
 	private <T> Object readArrayValue(Class<T> arrayType) 
 			throws JsonDecodeException {
 		Collection<T> items;
-		if (Collections.class.isAssignableFrom(arrayType)
-				&& !arrayType.isInterface()) {
-			try {
-				items = (Collection<T>)arrayType.newInstance();
-			} catch (InstantiationException | IllegalAccessException e) {
-				throw new JsonDecodeException(parser.getLocation()
-						+ ": Cannot create " + arrayType.getName(), e);
-			}
-		} else {
+		if (!Collection.class.isAssignableFrom(arrayType)) {
 			items = new ArrayList<>();
+		} else {
+			if (arrayType.isInterface()) {
+				// This is how things should be: interface type
+				if (Set.class.isAssignableFrom(arrayType)) {
+					items = new HashSet<>();
+				} else {
+					items = new ArrayList<>();
+				}
+			} else {
+				// Implementation type, we'll try our best
+				try {
+					items = (Collection<T>)arrayType.newInstance();
+				} catch (InstantiationException | IllegalAccessException e) {
+					throw new JsonDecodeException(parser.getLocation()
+							+ ": Cannot create " + arrayType.getName(), e);
+				}
+			} 
 		}
 		Class<?> itemType = Object.class;
 		if (arrayType.isArray()) {

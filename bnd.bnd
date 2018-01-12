@@ -1,6 +1,6 @@
 Bundle-Name: JDrupes JSON Library
 Bundle-SymbolicName: org.jdrupes.json
-Bundle-Version: 1.0.4.${tstamp}
+Bundle-Version: 1.0.4.-${tstamp}
 Bundle-Copyright: Michael N. Lipp (c) 2017
 Bundle-License: http://www.gnu.org/licenses/lgpl-3.0.txt
 
