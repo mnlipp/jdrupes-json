@@ -33,7 +33,7 @@ archivesBaseName = 'json'
 description = "JDrupes JSON library"
 
 ext.releaseVersion = "1.0.6"
-ext.isSnapshot = true
+ext.isSnapshot = false
 version = releaseVersion + (isSnapshot ? "-SNAPSHOT" : "")
 
 // Derive bundle version and propagate to bnd
