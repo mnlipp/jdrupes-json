@@ -179,351 +179,381 @@
 <span class="sourceLineNo">171</span>                this.parser = parser;<a name="line.171"></a>
 <span class="sourceLineNo">172</span>        }<a name="line.172"></a>
 <span class="sourceLineNo">173</span><a name="line.173"></a>
-<span class="sourceLineNo">174</span>        public Map&lt;String,?&gt; readObject() {<a name="line.174"></a>
-<span class="sourceLineNo">175</span>                Map &lt;String,?&gt; root = new HashMap&lt;&gt;();<a name="line.175"></a>
-<span class="sourceLineNo">176</span>                return root;<a name="line.176"></a>
-<span class="sourceLineNo">177</span>        }<a name="line.177"></a>
-<span class="sourceLineNo">178</span><a name="line.178"></a>
-<span class="sourceLineNo">179</span>        public &lt;T&gt; T readObject(Class&lt;T&gt; expected) throws JsonDecodeException {<a name="line.179"></a>
-<span class="sourceLineNo">180</span>                return readValue(expected);<a name="line.180"></a>
-<span class="sourceLineNo">181</span>        }<a name="line.181"></a>
-<span class="sourceLineNo">182</span>        <a name="line.182"></a>
-<span class="sourceLineNo">183</span>        public &lt;T&gt; T readArray(Class&lt;T&gt; expected) throws JsonDecodeException {<a name="line.183"></a>
-<span class="sourceLineNo">184</span>                return readValue(expected);<a name="line.184"></a>
-<span class="sourceLineNo">185</span>        }<a name="line.185"></a>
-<span class="sourceLineNo">186</span><a name="line.186"></a>
-<span class="sourceLineNo">187</span>        private static final Object END_VALUE = new Object();<a name="line.187"></a>
-<span class="sourceLineNo">188</span>        <a name="line.188"></a>
-<span class="sourceLineNo">189</span>        @SuppressWarnings("unchecked")<a name="line.189"></a>
-<span class="sourceLineNo">190</span>        private &lt;T&gt; T readValue(Class&lt;T&gt; expected) <a name="line.190"></a>
-<span class="sourceLineNo">191</span>                        throws JsonDecodeException {<a name="line.191"></a>
-<span class="sourceLineNo">192</span>                switch(parser.next()) {<a name="line.192"></a>
-<span class="sourceLineNo">193</span>                case END_ARRAY:<a name="line.193"></a>
-<span class="sourceLineNo">194</span>                case END_OBJECT:<a name="line.194"></a>
-<span class="sourceLineNo">195</span>                        return (T)END_VALUE;<a name="line.195"></a>
-<span class="sourceLineNo">196</span>                case VALUE_NULL:<a name="line.196"></a>
-<span class="sourceLineNo">197</span>                        return null;<a name="line.197"></a>
-<span class="sourceLineNo">198</span>                case VALUE_FALSE:<a name="line.198"></a>
-<span class="sourceLineNo">199</span>                        return (T)Boolean.FALSE;<a name="line.199"></a>
-<span class="sourceLineNo">200</span>                case VALUE_TRUE:<a name="line.200"></a>
-<span class="sourceLineNo">201</span>                        return (T)Boolean.TRUE;<a name="line.201"></a>
-<span class="sourceLineNo">202</span>                case VALUE_STRING:<a name="line.202"></a>
-<span class="sourceLineNo">203</span>                        PropertyEditor propertyEditor <a name="line.203"></a>
-<span class="sourceLineNo">204</span>                                = PropertyEditorManager.findEditor(expected);<a name="line.204"></a>
-<span class="sourceLineNo">205</span>                        if (propertyEditor != null) {<a name="line.205"></a>
-<span class="sourceLineNo">206</span>                                propertyEditor.setAsText(parser.getString());<a name="line.206"></a>
-<span class="sourceLineNo">207</span>                                return (T)propertyEditor.getValue();<a name="line.207"></a>
-<span class="sourceLineNo">208</span>                        }<a name="line.208"></a>
-<span class="sourceLineNo">209</span>                        if (Enum.class.isAssignableFrom(expected)) {<a name="line.209"></a>
-<span class="sourceLineNo">210</span>                                @SuppressWarnings("rawtypes")<a name="line.210"></a>
-<span class="sourceLineNo">211</span>                                Class&lt;Enum&gt; enumClass = (Class&lt;Enum&gt;)expected;<a name="line.211"></a>
-<span class="sourceLineNo">212</span>                                return (T)Enum.valueOf(enumClass, parser.getString());<a name="line.212"></a>
-<span class="sourceLineNo">213</span>                        }<a name="line.213"></a>
-<span class="sourceLineNo">214</span>                        // fall through<a name="line.214"></a>
-<span class="sourceLineNo">215</span>                case KEY_NAME:<a name="line.215"></a>
-<span class="sourceLineNo">216</span>                        return (T)parser.getString();<a name="line.216"></a>
-<span class="sourceLineNo">217</span>                case VALUE_NUMBER:<a name="line.217"></a>
-<span class="sourceLineNo">218</span>                        return readNumber(expected);<a name="line.218"></a>
-<span class="sourceLineNo">219</span>                case START_ARRAY:<a name="line.219"></a>
-<span class="sourceLineNo">220</span>                        if (expected.isArray() <a name="line.220"></a>
-<span class="sourceLineNo">221</span>                                        || Collection.class.isAssignableFrom(expected)<a name="line.221"></a>
-<span class="sourceLineNo">222</span>                                        || expected.equals(Object.class)) {<a name="line.222"></a>
-<span class="sourceLineNo">223</span>                                return (T)readArrayValue(expected);<a name="line.223"></a>
-<span class="sourceLineNo">224</span>                        }<a name="line.224"></a>
-<span class="sourceLineNo">225</span>                        throw new JsonDecodeException(parser.getLocation()<a name="line.225"></a>
-<span class="sourceLineNo">226</span>                                        + ": Encountered unexpected array.");<a name="line.226"></a>
-<span class="sourceLineNo">227</span>                case START_OBJECT:<a name="line.227"></a>
-<span class="sourceLineNo">228</span>                        return readObjectValue(expected);<a name="line.228"></a>
-<span class="sourceLineNo">229</span>                default:<a name="line.229"></a>
-<span class="sourceLineNo">230</span>                        throw new JsonDecodeException(parser.getLocation()<a name="line.230"></a>
-<span class="sourceLineNo">231</span>                                        + ": Unexpected event.");<a name="line.231"></a>
-<span class="sourceLineNo">232</span>                }<a name="line.232"></a>
-<span class="sourceLineNo">233</span>        }<a name="line.233"></a>
-<span class="sourceLineNo">234</span><a name="line.234"></a>
-<span class="sourceLineNo">235</span>        @SuppressWarnings("unchecked")<a name="line.235"></a>
-<span class="sourceLineNo">236</span>        private &lt;T&gt; T readNumber(Class&lt;T&gt; expected) {<a name="line.236"></a>
-<span class="sourceLineNo">237</span>                if (expected.equals(Byte.class) <a name="line.237"></a>
-<span class="sourceLineNo">238</span>                                || expected.equals(Byte.TYPE)) {<a name="line.238"></a>
-<span class="sourceLineNo">239</span>                        return (T)Byte.valueOf((byte)parser.getInt());<a name="line.239"></a>
-<span class="sourceLineNo">240</span>                }<a name="line.240"></a>
-<span class="sourceLineNo">241</span>                if (expected.equals(Short.class) <a name="line.241"></a>
-<span class="sourceLineNo">242</span>                                || expected.equals(Short.TYPE)) {<a name="line.242"></a>
-<span class="sourceLineNo">243</span>                        return (T)Short.valueOf((short)parser.getInt());<a name="line.243"></a>
-<span class="sourceLineNo">244</span>                }<a name="line.244"></a>
-<span class="sourceLineNo">245</span>                if (expected.equals(Integer.class) <a name="line.245"></a>
-<span class="sourceLineNo">246</span>                                || expected.equals(Integer.TYPE)) {<a name="line.246"></a>
-<span class="sourceLineNo">247</span>                        return (T)Integer.valueOf(parser.getInt());<a name="line.247"></a>
-<span class="sourceLineNo">248</span>                }<a name="line.248"></a>
-<span class="sourceLineNo">249</span>                if (expected.equals(BigInteger.class)) {<a name="line.249"></a>
-<span class="sourceLineNo">250</span>                        return (T)parser.getBigDecimal().toBigInteger();<a name="line.250"></a>
-<span class="sourceLineNo">251</span>                }<a name="line.251"></a>
-<span class="sourceLineNo">252</span>                if (expected.equals(BigDecimal.class)) {<a name="line.252"></a>
-<span class="sourceLineNo">253</span>                        return (T)parser.getBigDecimal();<a name="line.253"></a>
-<span class="sourceLineNo">254</span>                }<a name="line.254"></a>
-<span class="sourceLineNo">255</span>                if (expected.equals(Float.class)<a name="line.255"></a>
-<span class="sourceLineNo">256</span>                                || expected.equals(Float.TYPE)) {<a name="line.256"></a>
-<span class="sourceLineNo">257</span>                        return (T)Float.valueOf(parser.getBigDecimal().floatValue());<a name="line.257"></a>
-<span class="sourceLineNo">258</span>                }<a name="line.258"></a>
-<span class="sourceLineNo">259</span>                if (expected.equals(Long.class) <a name="line.259"></a>
-<span class="sourceLineNo">260</span>                                || expected.equals(Long.TYPE)<a name="line.260"></a>
-<span class="sourceLineNo">261</span>                                || parser.isIntegralNumber()) {<a name="line.261"></a>
-<span class="sourceLineNo">262</span>                        return (T)Long.valueOf(parser.getLong());<a name="line.262"></a>
+<span class="sourceLineNo">174</span>        /**<a name="line.174"></a>
+<span class="sourceLineNo">175</span>         * Read a JSON object description into a new {@link Map}.<a name="line.175"></a>
+<span class="sourceLineNo">176</span>         * <a name="line.176"></a>
+<span class="sourceLineNo">177</span>         * @return the Map<a name="line.177"></a>
+<span class="sourceLineNo">178</span>         * @throws JsonDecodeException<a name="line.178"></a>
+<span class="sourceLineNo">179</span>         */<a name="line.179"></a>
+<span class="sourceLineNo">180</span>        @SuppressWarnings("unchecked")<a name="line.180"></a>
+<span class="sourceLineNo">181</span>        public Map&lt;String,Object&gt; readObject() throws JsonDecodeException {<a name="line.181"></a>
+<span class="sourceLineNo">182</span>                return readValue(HashMap.class);<a name="line.182"></a>
+<span class="sourceLineNo">183</span>        }<a name="line.183"></a>
+<span class="sourceLineNo">184</span><a name="line.184"></a>
+<span class="sourceLineNo">185</span>        /**<a name="line.185"></a>
+<span class="sourceLineNo">186</span>         * Read a JSON object description into a new object of the<a name="line.186"></a>
+<span class="sourceLineNo">187</span>         * expected type. The result may have a type derived from<a name="line.187"></a>
+<span class="sourceLineNo">188</span>         * the expected type if the JSON read has a `class` key.<a name="line.188"></a>
+<span class="sourceLineNo">189</span>         * <a name="line.189"></a>
+<span class="sourceLineNo">190</span>         * @param expected the expected type<a name="line.190"></a>
+<span class="sourceLineNo">191</span>         * @return the result<a name="line.191"></a>
+<span class="sourceLineNo">192</span>         * @throws JsonDecodeException<a name="line.192"></a>
+<span class="sourceLineNo">193</span>         */<a name="line.193"></a>
+<span class="sourceLineNo">194</span>        public &lt;T&gt; T readObject(Class&lt;T&gt; expected) throws JsonDecodeException {<a name="line.194"></a>
+<span class="sourceLineNo">195</span>                return readValue(expected);<a name="line.195"></a>
+<span class="sourceLineNo">196</span>        }<a name="line.196"></a>
+<span class="sourceLineNo">197</span>        <a name="line.197"></a>
+<span class="sourceLineNo">198</span>        /**<a name="line.198"></a>
+<span class="sourceLineNo">199</span>         * Read a JSON array description into a new array of the<a name="line.199"></a>
+<span class="sourceLineNo">200</span>         * expected type.<a name="line.200"></a>
+<span class="sourceLineNo">201</span>         * <a name="line.201"></a>
+<span class="sourceLineNo">202</span>         * @param expected the expected type<a name="line.202"></a>
+<span class="sourceLineNo">203</span>         * @return the result<a name="line.203"></a>
+<span class="sourceLineNo">204</span>         * @throws JsonDecodeException<a name="line.204"></a>
+<span class="sourceLineNo">205</span>         */<a name="line.205"></a>
+<span class="sourceLineNo">206</span>        public &lt;T&gt; T readArray(Class&lt;T&gt; expected) throws JsonDecodeException {<a name="line.206"></a>
+<span class="sourceLineNo">207</span>                return readValue(expected);<a name="line.207"></a>
+<span class="sourceLineNo">208</span>        }<a name="line.208"></a>
+<span class="sourceLineNo">209</span><a name="line.209"></a>
+<span class="sourceLineNo">210</span>        private static final Object END_VALUE = new Object();<a name="line.210"></a>
+<span class="sourceLineNo">211</span>        <a name="line.211"></a>
+<span class="sourceLineNo">212</span>        @SuppressWarnings("unchecked")<a name="line.212"></a>
+<span class="sourceLineNo">213</span>        private &lt;T&gt; T readValue(Class&lt;T&gt; expected) <a name="line.213"></a>
+<span class="sourceLineNo">214</span>                        throws JsonDecodeException {<a name="line.214"></a>
+<span class="sourceLineNo">215</span>                switch(parser.next()) {<a name="line.215"></a>
+<span class="sourceLineNo">216</span>                case END_ARRAY:<a name="line.216"></a>
+<span class="sourceLineNo">217</span>                case END_OBJECT:<a name="line.217"></a>
+<span class="sourceLineNo">218</span>                        return (T)END_VALUE;<a name="line.218"></a>
+<span class="sourceLineNo">219</span>                case VALUE_NULL:<a name="line.219"></a>
+<span class="sourceLineNo">220</span>                        return null;<a name="line.220"></a>
+<span class="sourceLineNo">221</span>                case VALUE_FALSE:<a name="line.221"></a>
+<span class="sourceLineNo">222</span>                        return (T)Boolean.FALSE;<a name="line.222"></a>
+<span class="sourceLineNo">223</span>                case VALUE_TRUE:<a name="line.223"></a>
+<span class="sourceLineNo">224</span>                        return (T)Boolean.TRUE;<a name="line.224"></a>
+<span class="sourceLineNo">225</span>                case VALUE_STRING:<a name="line.225"></a>
+<span class="sourceLineNo">226</span>                        PropertyEditor propertyEditor <a name="line.226"></a>
+<span class="sourceLineNo">227</span>                                = PropertyEditorManager.findEditor(expected);<a name="line.227"></a>
+<span class="sourceLineNo">228</span>                        if (propertyEditor != null) {<a name="line.228"></a>
+<span class="sourceLineNo">229</span>                                propertyEditor.setAsText(parser.getString());<a name="line.229"></a>
+<span class="sourceLineNo">230</span>                                return (T)propertyEditor.getValue();<a name="line.230"></a>
+<span class="sourceLineNo">231</span>                        }<a name="line.231"></a>
+<span class="sourceLineNo">232</span>                        if (Enum.class.isAssignableFrom(expected)) {<a name="line.232"></a>
+<span class="sourceLineNo">233</span>                                @SuppressWarnings("rawtypes")<a name="line.233"></a>
+<span class="sourceLineNo">234</span>                                Class&lt;Enum&gt; enumClass = (Class&lt;Enum&gt;)expected;<a name="line.234"></a>
+<span class="sourceLineNo">235</span>                                return (T)Enum.valueOf(enumClass, parser.getString());<a name="line.235"></a>
+<span class="sourceLineNo">236</span>                        }<a name="line.236"></a>
+<span class="sourceLineNo">237</span>                        // fall through<a name="line.237"></a>
+<span class="sourceLineNo">238</span>                case KEY_NAME:<a name="line.238"></a>
+<span class="sourceLineNo">239</span>                        return (T)parser.getString();<a name="line.239"></a>
+<span class="sourceLineNo">240</span>                case VALUE_NUMBER:<a name="line.240"></a>
+<span class="sourceLineNo">241</span>                        return readNumber(expected);<a name="line.241"></a>
+<span class="sourceLineNo">242</span>                case START_ARRAY:<a name="line.242"></a>
+<span class="sourceLineNo">243</span>                        if (expected.isArray() <a name="line.243"></a>
+<span class="sourceLineNo">244</span>                                        || Collection.class.isAssignableFrom(expected)<a name="line.244"></a>
+<span class="sourceLineNo">245</span>                                        || expected.equals(Object.class)) {<a name="line.245"></a>
+<span class="sourceLineNo">246</span>                                return (T)readArrayValue(expected);<a name="line.246"></a>
+<span class="sourceLineNo">247</span>                        }<a name="line.247"></a>
+<span class="sourceLineNo">248</span>                        throw new JsonDecodeException(parser.getLocation()<a name="line.248"></a>
+<span class="sourceLineNo">249</span>                                        + ": Encountered unexpected array.");<a name="line.249"></a>
+<span class="sourceLineNo">250</span>                case START_OBJECT:<a name="line.250"></a>
+<span class="sourceLineNo">251</span>                        return readObjectValue(expected);<a name="line.251"></a>
+<span class="sourceLineNo">252</span>                default:<a name="line.252"></a>
+<span class="sourceLineNo">253</span>                        throw new JsonDecodeException(parser.getLocation()<a name="line.253"></a>
+<span class="sourceLineNo">254</span>                                        + ": Unexpected event.");<a name="line.254"></a>
+<span class="sourceLineNo">255</span>                }<a name="line.255"></a>
+<span class="sourceLineNo">256</span>        }<a name="line.256"></a>
+<span class="sourceLineNo">257</span><a name="line.257"></a>
+<span class="sourceLineNo">258</span>        @SuppressWarnings("unchecked")<a name="line.258"></a>
+<span class="sourceLineNo">259</span>        private &lt;T&gt; T readNumber(Class&lt;T&gt; expected) {<a name="line.259"></a>
+<span class="sourceLineNo">260</span>                if (expected.equals(Byte.class) <a name="line.260"></a>
+<span class="sourceLineNo">261</span>                                || expected.equals(Byte.TYPE)) {<a name="line.261"></a>
+<span class="sourceLineNo">262</span>                        return (T)Byte.valueOf((byte)parser.getInt());<a name="line.262"></a>
 <span class="sourceLineNo">263</span>                }<a name="line.263"></a>
-<span class="sourceLineNo">264</span>                return (T)Double.valueOf(parser.getBigDecimal().doubleValue());<a name="line.264"></a>
-<span class="sourceLineNo">265</span>        }<a name="line.265"></a>
-<span class="sourceLineNo">266</span>        <a name="line.266"></a>
-<span class="sourceLineNo">267</span>        @SuppressWarnings("unchecked")<a name="line.267"></a>
-<span class="sourceLineNo">268</span>        private &lt;T&gt; Object readArrayValue(Class&lt;T&gt; arrayType) <a name="line.268"></a>
-<span class="sourceLineNo">269</span>                        throws JsonDecodeException {<a name="line.269"></a>
-<span class="sourceLineNo">270</span>                Collection&lt;T&gt; items;<a name="line.270"></a>
-<span class="sourceLineNo">271</span>                if (!Collection.class.isAssignableFrom(arrayType)) {<a name="line.271"></a>
-<span class="sourceLineNo">272</span>                        items = new ArrayList&lt;&gt;();<a name="line.272"></a>
-<span class="sourceLineNo">273</span>                } else {<a name="line.273"></a>
-<span class="sourceLineNo">274</span>                        if (arrayType.isInterface()) {<a name="line.274"></a>
-<span class="sourceLineNo">275</span>                                // This is how things should be: interface type<a name="line.275"></a>
-<span class="sourceLineNo">276</span>                                if (Set.class.isAssignableFrom(arrayType)) {<a name="line.276"></a>
-<span class="sourceLineNo">277</span>                                        items = new HashSet&lt;&gt;();<a name="line.277"></a>
-<span class="sourceLineNo">278</span>                                } else {<a name="line.278"></a>
-<span class="sourceLineNo">279</span>                                        items = new ArrayList&lt;&gt;();<a name="line.279"></a>
-<span class="sourceLineNo">280</span>                                }<a name="line.280"></a>
-<span class="sourceLineNo">281</span>                        } else {<a name="line.281"></a>
-<span class="sourceLineNo">282</span>                                // Implementation type, we'll try our best<a name="line.282"></a>
-<span class="sourceLineNo">283</span>                                try {<a name="line.283"></a>
-<span class="sourceLineNo">284</span>                                        items = (Collection&lt;T&gt;)arrayType.newInstance();<a name="line.284"></a>
-<span class="sourceLineNo">285</span>                                } catch (InstantiationException | IllegalAccessException e) {<a name="line.285"></a>
-<span class="sourceLineNo">286</span>                                        throw new JsonDecodeException(parser.getLocation()<a name="line.286"></a>
-<span class="sourceLineNo">287</span>                                                        + ": Cannot create " + arrayType.getName(), e);<a name="line.287"></a>
-<span class="sourceLineNo">288</span>                                }<a name="line.288"></a>
-<span class="sourceLineNo">289</span>                        } <a name="line.289"></a>
-<span class="sourceLineNo">290</span>                }<a name="line.290"></a>
-<span class="sourceLineNo">291</span>                Class&lt;?&gt; itemType = Object.class;<a name="line.291"></a>
-<span class="sourceLineNo">292</span>                if (arrayType.isArray()) {<a name="line.292"></a>
-<span class="sourceLineNo">293</span>                        itemType = arrayType.getComponentType();<a name="line.293"></a>
-<span class="sourceLineNo">294</span>                }<a name="line.294"></a>
-<span class="sourceLineNo">295</span>                while (true) {<a name="line.295"></a>
-<span class="sourceLineNo">296</span>                        T item = (T)readValue(itemType);<a name="line.296"></a>
-<span class="sourceLineNo">297</span>                        if (item == END_VALUE) {<a name="line.297"></a>
-<span class="sourceLineNo">298</span>                                break;<a name="line.298"></a>
-<span class="sourceLineNo">299</span>                        }<a name="line.299"></a>
-<span class="sourceLineNo">300</span>                        items.add(item);<a name="line.300"></a>
-<span class="sourceLineNo">301</span>                }<a name="line.301"></a>
-<span class="sourceLineNo">302</span>                if (!arrayType.isArray()) {<a name="line.302"></a>
-<span class="sourceLineNo">303</span>                        return items;<a name="line.303"></a>
+<span class="sourceLineNo">264</span>                if (expected.equals(Short.class) <a name="line.264"></a>
+<span class="sourceLineNo">265</span>                                || expected.equals(Short.TYPE)) {<a name="line.265"></a>
+<span class="sourceLineNo">266</span>                        return (T)Short.valueOf((short)parser.getInt());<a name="line.266"></a>
+<span class="sourceLineNo">267</span>                }<a name="line.267"></a>
+<span class="sourceLineNo">268</span>                if (expected.equals(Integer.class) <a name="line.268"></a>
+<span class="sourceLineNo">269</span>                                || expected.equals(Integer.TYPE)) {<a name="line.269"></a>
+<span class="sourceLineNo">270</span>                        return (T)Integer.valueOf(parser.getInt());<a name="line.270"></a>
+<span class="sourceLineNo">271</span>                }<a name="line.271"></a>
+<span class="sourceLineNo">272</span>                if (expected.equals(BigInteger.class)) {<a name="line.272"></a>
+<span class="sourceLineNo">273</span>                        return (T)parser.getBigDecimal().toBigInteger();<a name="line.273"></a>
+<span class="sourceLineNo">274</span>                }<a name="line.274"></a>
+<span class="sourceLineNo">275</span>                if (expected.equals(BigDecimal.class)) {<a name="line.275"></a>
+<span class="sourceLineNo">276</span>                        return (T)parser.getBigDecimal();<a name="line.276"></a>
+<span class="sourceLineNo">277</span>                }<a name="line.277"></a>
+<span class="sourceLineNo">278</span>                if (expected.equals(Float.class)<a name="line.278"></a>
+<span class="sourceLineNo">279</span>                                || expected.equals(Float.TYPE)) {<a name="line.279"></a>
+<span class="sourceLineNo">280</span>                        return (T)Float.valueOf(parser.getBigDecimal().floatValue());<a name="line.280"></a>
+<span class="sourceLineNo">281</span>                }<a name="line.281"></a>
+<span class="sourceLineNo">282</span>                if (expected.equals(Long.class) <a name="line.282"></a>
+<span class="sourceLineNo">283</span>                                || expected.equals(Long.TYPE)<a name="line.283"></a>
+<span class="sourceLineNo">284</span>                                || parser.isIntegralNumber()) {<a name="line.284"></a>
+<span class="sourceLineNo">285</span>                        return (T)Long.valueOf(parser.getLong());<a name="line.285"></a>
+<span class="sourceLineNo">286</span>                }<a name="line.286"></a>
+<span class="sourceLineNo">287</span>                return (T)Double.valueOf(parser.getBigDecimal().doubleValue());<a name="line.287"></a>
+<span class="sourceLineNo">288</span>        }<a name="line.288"></a>
+<span class="sourceLineNo">289</span>        <a name="line.289"></a>
+<span class="sourceLineNo">290</span>        @SuppressWarnings("unchecked")<a name="line.290"></a>
+<span class="sourceLineNo">291</span>        private &lt;T&gt; Object readArrayValue(Class&lt;T&gt; arrayType) <a name="line.291"></a>
+<span class="sourceLineNo">292</span>                        throws JsonDecodeException {<a name="line.292"></a>
+<span class="sourceLineNo">293</span>                Collection&lt;T&gt; items = createCollection(arrayType);<a name="line.293"></a>
+<span class="sourceLineNo">294</span>                Class&lt;?&gt; itemType = Object.class;<a name="line.294"></a>
+<span class="sourceLineNo">295</span>                if (arrayType.isArray()) {<a name="line.295"></a>
+<span class="sourceLineNo">296</span>                        itemType = arrayType.getComponentType();<a name="line.296"></a>
+<span class="sourceLineNo">297</span>                }<a name="line.297"></a>
+<span class="sourceLineNo">298</span>                while (true) {<a name="line.298"></a>
+<span class="sourceLineNo">299</span>                        T item = (T)readValue(itemType);<a name="line.299"></a>
+<span class="sourceLineNo">300</span>                        if (item == END_VALUE) {<a name="line.300"></a>
+<span class="sourceLineNo">301</span>                                break;<a name="line.301"></a>
+<span class="sourceLineNo">302</span>                        }<a name="line.302"></a>
+<span class="sourceLineNo">303</span>                        items.add(item);<a name="line.303"></a>
 <span class="sourceLineNo">304</span>                }<a name="line.304"></a>
-<span class="sourceLineNo">305</span>                Object result = Array.newInstance(itemType, items.size());<a name="line.305"></a>
-<span class="sourceLineNo">306</span>                int index = 0;<a name="line.306"></a>
-<span class="sourceLineNo">307</span>                for (Object o: items) {<a name="line.307"></a>
-<span class="sourceLineNo">308</span>                        Array.set(result, index++, o);<a name="line.308"></a>
-<span class="sourceLineNo">309</span>                }<a name="line.309"></a>
-<span class="sourceLineNo">310</span>                return result;<a name="line.310"></a>
-<span class="sourceLineNo">311</span>        }<a name="line.311"></a>
-<span class="sourceLineNo">312</span>        <a name="line.312"></a>
-<span class="sourceLineNo">313</span>        private &lt;T&gt; T readObjectValue(Class&lt;T&gt; expected) <a name="line.313"></a>
-<span class="sourceLineNo">314</span>                        throws JsonDecodeException {<a name="line.314"></a>
-<span class="sourceLineNo">315</span>                Event event = parser.next();<a name="line.315"></a>
-<span class="sourceLineNo">316</span>                if (!event.equals(Event.KEY_NAME)) {<a name="line.316"></a>
-<span class="sourceLineNo">317</span>                        throw new JsonDecodeException(parser.getLocation()<a name="line.317"></a>
-<span class="sourceLineNo">318</span>                                        + ": Unexpected Json event " + event);<a name="line.318"></a>
-<span class="sourceLineNo">319</span>                }<a name="line.319"></a>
-<span class="sourceLineNo">320</span>                String key = parser.getString();                <a name="line.320"></a>
-<span class="sourceLineNo">321</span>                Class&lt;?&gt; actualCls = expected;<a name="line.321"></a>
-<span class="sourceLineNo">322</span>                if ("class".equals(key)) {<a name="line.322"></a>
-<span class="sourceLineNo">323</span>                        parser.next();<a name="line.323"></a>
-<span class="sourceLineNo">324</span>                        String provided = parser.getString();<a name="line.324"></a>
-<span class="sourceLineNo">325</span>                        if (aliases.containsKey(provided)) {<a name="line.325"></a>
-<span class="sourceLineNo">326</span>                                actualCls = aliases.get(provided);<a name="line.326"></a>
-<span class="sourceLineNo">327</span>                        } else {<a name="line.327"></a>
-<span class="sourceLineNo">328</span>                                actualCls = classConverter.apply(provided).orElse(HashMap.class);<a name="line.328"></a>
-<span class="sourceLineNo">329</span>                        }<a name="line.329"></a>
-<span class="sourceLineNo">330</span>                }<a name="line.330"></a>
-<span class="sourceLineNo">331</span>                if (!expected.isAssignableFrom(actualCls)) {<a name="line.331"></a>
-<span class="sourceLineNo">332</span>                        throw new JsonDecodeException(parser.getLocation()<a name="line.332"></a>
-<span class="sourceLineNo">333</span>                                        + ": Expected " + expected.getName()<a name="line.333"></a>
-<span class="sourceLineNo">334</span>                                        + " found " + actualCls.getName());<a name="line.334"></a>
-<span class="sourceLineNo">335</span>                }<a name="line.335"></a>
-<span class="sourceLineNo">336</span>                if (actualCls.equals(Object.class)) {<a name="line.336"></a>
-<span class="sourceLineNo">337</span>                        actualCls = HashMap.class;<a name="line.337"></a>
-<span class="sourceLineNo">338</span>                }<a name="line.338"></a>
-<span class="sourceLineNo">339</span>                if (Map.class.isAssignableFrom(actualCls)) {<a name="line.339"></a>
-<span class="sourceLineNo">340</span>                        T result = null;<a name="line.340"></a>
-<span class="sourceLineNo">341</span>                        try {<a name="line.341"></a>
-<span class="sourceLineNo">342</span>                                @SuppressWarnings("unchecked")<a name="line.342"></a>
-<span class="sourceLineNo">343</span>                                T res = (T)actualCls.newInstance();<a name="line.343"></a>
-<span class="sourceLineNo">344</span>                                result = res;<a name="line.344"></a>
-<span class="sourceLineNo">345</span>                        } catch (InstantiationException<a name="line.345"></a>
-<span class="sourceLineNo">346</span>                                        | IllegalAccessException e) {<a name="line.346"></a>
-<span class="sourceLineNo">347</span>                                throw new JsonDecodeException(parser.getLocation()<a name="line.347"></a>
-<span class="sourceLineNo">348</span>                                                + ": Cannot create " + actualCls.getName(), e);<a name="line.348"></a>
-<span class="sourceLineNo">349</span>                        }<a name="line.349"></a>
-<span class="sourceLineNo">350</span>                        @SuppressWarnings("unchecked")<a name="line.350"></a>
-<span class="sourceLineNo">351</span>                        Map&lt;String,?&gt; map = (Map&lt;String,?&gt;)result;<a name="line.351"></a>
-<span class="sourceLineNo">352</span>                        objectToMap(map, !"class".equals(key));<a name="line.352"></a>
-<span class="sourceLineNo">353</span>                        return result;<a name="line.353"></a>
-<span class="sourceLineNo">354</span>                }<a name="line.354"></a>
-<span class="sourceLineNo">355</span>                @SuppressWarnings("unchecked")<a name="line.355"></a>
-<span class="sourceLineNo">356</span>                Class&lt;T&gt; beanCls = (Class&lt;T&gt;)actualCls;<a name="line.356"></a>
-<span class="sourceLineNo">357</span>                return objectToBean(beanCls, !"class".equals(key));<a name="line.357"></a>
-<span class="sourceLineNo">358</span>        }<a name="line.358"></a>
-<span class="sourceLineNo">359</span><a name="line.359"></a>
-<span class="sourceLineNo">360</span>        private Map&lt;String,?&gt; objectToMap(Map&lt;String,?&gt; result, boolean inKeyState)<a name="line.360"></a>
-<span class="sourceLineNo">361</span>                        throws JsonDecodeException {<a name="line.361"></a>
-<span class="sourceLineNo">362</span>                whileLoop:<a name="line.362"></a>
-<span class="sourceLineNo">363</span>                while (true) {<a name="line.363"></a>
-<span class="sourceLineNo">364</span>                        Event event = inKeyState ? Event.KEY_NAME : parser.next();<a name="line.364"></a>
-<span class="sourceLineNo">365</span>                        switch(event) {<a name="line.365"></a>
-<span class="sourceLineNo">366</span>                        case END_OBJECT:<a name="line.366"></a>
-<span class="sourceLineNo">367</span>                                break whileLoop;<a name="line.367"></a>
-<span class="sourceLineNo">368</span>                                <a name="line.368"></a>
-<span class="sourceLineNo">369</span>                        case KEY_NAME:<a name="line.369"></a>
-<span class="sourceLineNo">370</span>                                String key = parser.getString();<a name="line.370"></a>
-<span class="sourceLineNo">371</span>                                inKeyState = false;<a name="line.371"></a>
-<span class="sourceLineNo">372</span>                                Object value = readValue(Object.class);<a name="line.372"></a>
-<span class="sourceLineNo">373</span>                                @SuppressWarnings("unchecked")<a name="line.373"></a>
-<span class="sourceLineNo">374</span>                                Map&lt;String,Object&gt; map = (Map&lt;String,Object&gt;)result;<a name="line.374"></a>
-<span class="sourceLineNo">375</span>                                map.put(key, value);<a name="line.375"></a>
-<span class="sourceLineNo">376</span>                                break;<a name="line.376"></a>
-<span class="sourceLineNo">377</span>                                <a name="line.377"></a>
-<span class="sourceLineNo">378</span>                        default:<a name="line.378"></a>
-<span class="sourceLineNo">379</span>                                throw new JsonDecodeException(parser.getLocation()<a name="line.379"></a>
-<span class="sourceLineNo">380</span>                                                + ": Unexpected Json event " + event);<a name="line.380"></a>
-<span class="sourceLineNo">381</span>                        }<a name="line.381"></a>
-<span class="sourceLineNo">382</span>                }<a name="line.382"></a>
-<span class="sourceLineNo">383</span>                return result;<a name="line.383"></a>
-<span class="sourceLineNo">384</span>                <a name="line.384"></a>
-<span class="sourceLineNo">385</span>        }<a name="line.385"></a>
-<span class="sourceLineNo">386</span>        <a name="line.386"></a>
-<span class="sourceLineNo">387</span>        private &lt;T&gt; T objectToBean(Class&lt;T&gt; beanCls, boolean inKeyState)<a name="line.387"></a>
-<span class="sourceLineNo">388</span>                        throws JsonDecodeException {<a name="line.388"></a>
-<span class="sourceLineNo">389</span>                Map&lt;String,PropertyDescriptor&gt; beanProps = new HashMap&lt;&gt;();<a name="line.389"></a>
-<span class="sourceLineNo">390</span>                try {<a name="line.390"></a>
-<span class="sourceLineNo">391</span>                        BeanInfo beanInfo = Introspector.getBeanInfo(beanCls, Object.class);<a name="line.391"></a>
-<span class="sourceLineNo">392</span>                        for (PropertyDescriptor <a name="line.392"></a>
-<span class="sourceLineNo">393</span>                                        p: beanInfo.getPropertyDescriptors()) {<a name="line.393"></a>
-<span class="sourceLineNo">394</span>                                beanProps.put(p.getName(), p);<a name="line.394"></a>
-<span class="sourceLineNo">395</span>                        }<a name="line.395"></a>
-<span class="sourceLineNo">396</span>                } catch (IntrospectionException e) {<a name="line.396"></a>
-<span class="sourceLineNo">397</span>                        throw new JsonDecodeException(parser.getLocation()<a name="line.397"></a>
-<span class="sourceLineNo">398</span>                                        + ": Cannot introspect " + beanCls);<a name="line.398"></a>
-<span class="sourceLineNo">399</span>                }<a name="line.399"></a>
-<span class="sourceLineNo">400</span>                <a name="line.400"></a>
-<span class="sourceLineNo">401</span>                // Get properties as map first.<a name="line.401"></a>
-<span class="sourceLineNo">402</span>                Map&lt;String, Object&gt; propsMap = parseProperties(beanProps, inKeyState);<a name="line.402"></a>
-<span class="sourceLineNo">403</span>                <a name="line.403"></a>
-<span class="sourceLineNo">404</span>                // Prepare result, using constructor with parameters if available.<a name="line.404"></a>
-<span class="sourceLineNo">405</span>                T result = createBean(beanCls, propsMap);<a name="line.405"></a>
-<span class="sourceLineNo">406</span><a name="line.406"></a>
-<span class="sourceLineNo">407</span>                // Set (remaining) properties.<a name="line.407"></a>
-<span class="sourceLineNo">408</span>                for (Map.Entry&lt;String, ?&gt; e: propsMap.entrySet()) {<a name="line.408"></a>
-<span class="sourceLineNo">409</span>                        PropertyDescriptor property = beanProps.get(e.getKey());<a name="line.409"></a>
-<span class="sourceLineNo">410</span>                        if (property == null) {<a name="line.410"></a>
+<span class="sourceLineNo">305</span>                if (!arrayType.isArray()) {<a name="line.305"></a>
+<span class="sourceLineNo">306</span>                        return items;<a name="line.306"></a>
+<span class="sourceLineNo">307</span>                }<a name="line.307"></a>
+<span class="sourceLineNo">308</span>                Object result = Array.newInstance(itemType, items.size());<a name="line.308"></a>
+<span class="sourceLineNo">309</span>                int index = 0;<a name="line.309"></a>
+<span class="sourceLineNo">310</span>                for (Object o: items) {<a name="line.310"></a>
+<span class="sourceLineNo">311</span>                        Array.set(result, index++, o);<a name="line.311"></a>
+<span class="sourceLineNo">312</span>                }<a name="line.312"></a>
+<span class="sourceLineNo">313</span>                return result;<a name="line.313"></a>
+<span class="sourceLineNo">314</span>        }<a name="line.314"></a>
+<span class="sourceLineNo">315</span><a name="line.315"></a>
+<span class="sourceLineNo">316</span>        private &lt;T&gt; Collection&lt;T&gt; createCollection(Class&lt;T&gt; arrayType)<a name="line.316"></a>
+<span class="sourceLineNo">317</span>                        throws JsonDecodeException {<a name="line.317"></a>
+<span class="sourceLineNo">318</span>                if (!Collection.class.isAssignableFrom(arrayType)) {<a name="line.318"></a>
+<span class="sourceLineNo">319</span>                        return new ArrayList&lt;&gt;();<a name="line.319"></a>
+<span class="sourceLineNo">320</span>                }<a name="line.320"></a>
+<span class="sourceLineNo">321</span>                if (arrayType.isInterface()) {<a name="line.321"></a>
+<span class="sourceLineNo">322</span>                        // This is how things should be: interface type<a name="line.322"></a>
+<span class="sourceLineNo">323</span>                        if (Set.class.isAssignableFrom(arrayType)) {<a name="line.323"></a>
+<span class="sourceLineNo">324</span>                                return new HashSet&lt;&gt;();<a name="line.324"></a>
+<span class="sourceLineNo">325</span>                        }<a name="line.325"></a>
+<span class="sourceLineNo">326</span>                        return new ArrayList&lt;&gt;();<a name="line.326"></a>
+<span class="sourceLineNo">327</span>                }<a name="line.327"></a>
+<span class="sourceLineNo">328</span>                // Implementation type, we'll try our best<a name="line.328"></a>
+<span class="sourceLineNo">329</span>                try {<a name="line.329"></a>
+<span class="sourceLineNo">330</span>                        @SuppressWarnings("unchecked")<a name="line.330"></a>
+<span class="sourceLineNo">331</span>                        Collection&lt;T&gt; result = (Collection&lt;T&gt;)arrayType.newInstance();<a name="line.331"></a>
+<span class="sourceLineNo">332</span>                        return result;<a name="line.332"></a>
+<span class="sourceLineNo">333</span>                } catch (InstantiationException | IllegalAccessException e) {<a name="line.333"></a>
+<span class="sourceLineNo">334</span>                        throw new JsonDecodeException(parser.getLocation()<a name="line.334"></a>
+<span class="sourceLineNo">335</span>                                        + ": Cannot create " + arrayType.getName(), e);<a name="line.335"></a>
+<span class="sourceLineNo">336</span>                }<a name="line.336"></a>
+<span class="sourceLineNo">337</span>        }<a name="line.337"></a>
+<span class="sourceLineNo">338</span>        <a name="line.338"></a>
+<span class="sourceLineNo">339</span>        private &lt;T&gt; T readObjectValue(Class&lt;T&gt; expected) <a name="line.339"></a>
+<span class="sourceLineNo">340</span>                        throws JsonDecodeException {<a name="line.340"></a>
+<span class="sourceLineNo">341</span>                Event prefetched = parser.next();<a name="line.341"></a>
+<span class="sourceLineNo">342</span>                if (!prefetched.equals(Event.KEY_NAME)<a name="line.342"></a>
+<span class="sourceLineNo">343</span>                                &amp;&amp; !prefetched.equals(Event.END_OBJECT)) {<a name="line.343"></a>
+<span class="sourceLineNo">344</span>                        throw new JsonDecodeException(parser.getLocation()<a name="line.344"></a>
+<span class="sourceLineNo">345</span>                                        + ": Unexpected Json event " + prefetched);<a name="line.345"></a>
+<span class="sourceLineNo">346</span>                }<a name="line.346"></a>
+<span class="sourceLineNo">347</span>                Class&lt;?&gt; actualCls = expected;<a name="line.347"></a>
+<span class="sourceLineNo">348</span>                if (prefetched.equals(Event.KEY_NAME)) {<a name="line.348"></a>
+<span class="sourceLineNo">349</span>                        String key = parser.getString();                <a name="line.349"></a>
+<span class="sourceLineNo">350</span>                        if ("class".equals(key)) {<a name="line.350"></a>
+<span class="sourceLineNo">351</span>                                prefetched = null; // Now it's consumed<a name="line.351"></a>
+<span class="sourceLineNo">352</span>                                parser.next();<a name="line.352"></a>
+<span class="sourceLineNo">353</span>                                String provided = parser.getString();<a name="line.353"></a>
+<span class="sourceLineNo">354</span>                                if (aliases.containsKey(provided)) {<a name="line.354"></a>
+<span class="sourceLineNo">355</span>                                        actualCls = aliases.get(provided);<a name="line.355"></a>
+<span class="sourceLineNo">356</span>                                } else {<a name="line.356"></a>
+<span class="sourceLineNo">357</span>                                        actualCls = classConverter.apply(provided).orElse(HashMap.class);<a name="line.357"></a>
+<span class="sourceLineNo">358</span>                                }<a name="line.358"></a>
+<span class="sourceLineNo">359</span>                        }<a name="line.359"></a>
+<span class="sourceLineNo">360</span>                }<a name="line.360"></a>
+<span class="sourceLineNo">361</span>                if (!expected.isAssignableFrom(actualCls)) {<a name="line.361"></a>
+<span class="sourceLineNo">362</span>                        throw new JsonDecodeException(parser.getLocation()<a name="line.362"></a>
+<span class="sourceLineNo">363</span>                                        + ": Expected " + expected.getName()<a name="line.363"></a>
+<span class="sourceLineNo">364</span>                                        + " found " + actualCls.getName());<a name="line.364"></a>
+<span class="sourceLineNo">365</span>                }<a name="line.365"></a>
+<span class="sourceLineNo">366</span>                if (actualCls.equals(Object.class)) {<a name="line.366"></a>
+<span class="sourceLineNo">367</span>                        actualCls = HashMap.class;<a name="line.367"></a>
+<span class="sourceLineNo">368</span>                }<a name="line.368"></a>
+<span class="sourceLineNo">369</span>                if (Map.class.isAssignableFrom(actualCls)) {<a name="line.369"></a>
+<span class="sourceLineNo">370</span>                        @SuppressWarnings("unchecked")<a name="line.370"></a>
+<span class="sourceLineNo">371</span>                        Map&lt;String,Object&gt; map = createMapInstance(<a name="line.371"></a>
+<span class="sourceLineNo">372</span>                                        (Class&lt;Map&lt;String,Object&gt;&gt;)actualCls);<a name="line.372"></a>
+<span class="sourceLineNo">373</span>                        objectIntoMap(map, prefetched);<a name="line.373"></a>
+<span class="sourceLineNo">374</span>                        @SuppressWarnings("unchecked")<a name="line.374"></a>
+<span class="sourceLineNo">375</span>                        T result = (T)map;<a name="line.375"></a>
+<span class="sourceLineNo">376</span>                        return result;<a name="line.376"></a>
+<span class="sourceLineNo">377</span>                }<a name="line.377"></a>
+<span class="sourceLineNo">378</span>                @SuppressWarnings("unchecked")<a name="line.378"></a>
+<span class="sourceLineNo">379</span>                Class&lt;T&gt; beanCls = (Class&lt;T&gt;)actualCls;<a name="line.379"></a>
+<span class="sourceLineNo">380</span>                return objectToBean(beanCls, prefetched);<a name="line.380"></a>
+<span class="sourceLineNo">381</span>        }<a name="line.381"></a>
+<span class="sourceLineNo">382</span><a name="line.382"></a>
+<span class="sourceLineNo">383</span>        private &lt;M extends Map&lt;String,Object&gt;&gt; M createMapInstance (Class&lt;M&gt; mapCls) <a name="line.383"></a>
+<span class="sourceLineNo">384</span>                        throws JsonDecodeException {<a name="line.384"></a>
+<span class="sourceLineNo">385</span>                try {<a name="line.385"></a>
+<span class="sourceLineNo">386</span>                        return (M)mapCls.newInstance();<a name="line.386"></a>
+<span class="sourceLineNo">387</span>                } catch (InstantiationException<a name="line.387"></a>
+<span class="sourceLineNo">388</span>                                | IllegalAccessException e) {<a name="line.388"></a>
+<span class="sourceLineNo">389</span>                        throw new JsonDecodeException(parser.getLocation()<a name="line.389"></a>
+<span class="sourceLineNo">390</span>                                        + ": Cannot create " + mapCls.getName(), e);<a name="line.390"></a>
+<span class="sourceLineNo">391</span>                }<a name="line.391"></a>
+<span class="sourceLineNo">392</span>        }<a name="line.392"></a>
+<span class="sourceLineNo">393</span>        <a name="line.393"></a>
+<span class="sourceLineNo">394</span>        private void objectIntoMap(Map&lt;String,Object&gt; result, Event prefetched)<a name="line.394"></a>
+<span class="sourceLineNo">395</span>                        throws JsonDecodeException {<a name="line.395"></a>
+<span class="sourceLineNo">396</span>                whileLoop:<a name="line.396"></a>
+<span class="sourceLineNo">397</span>                while (true) {<a name="line.397"></a>
+<span class="sourceLineNo">398</span>                        Event event = prefetched != null ? prefetched : parser.next();<a name="line.398"></a>
+<span class="sourceLineNo">399</span>                        prefetched = null; // Consumed.<a name="line.399"></a>
+<span class="sourceLineNo">400</span>                        switch(event) {<a name="line.400"></a>
+<span class="sourceLineNo">401</span>                        case END_OBJECT:<a name="line.401"></a>
+<span class="sourceLineNo">402</span>                                break whileLoop;<a name="line.402"></a>
+<span class="sourceLineNo">403</span>                                <a name="line.403"></a>
+<span class="sourceLineNo">404</span>                        case KEY_NAME:<a name="line.404"></a>
+<span class="sourceLineNo">405</span>                                String key = parser.getString();<a name="line.405"></a>
+<span class="sourceLineNo">406</span>                                Object value = readValue(Object.class);<a name="line.406"></a>
+<span class="sourceLineNo">407</span>                                result.put(key, value);<a name="line.407"></a>
+<span class="sourceLineNo">408</span>                                break;<a name="line.408"></a>
+<span class="sourceLineNo">409</span>                                <a name="line.409"></a>
+<span class="sourceLineNo">410</span>                        default:<a name="line.410"></a>
 <span class="sourceLineNo">411</span>                                throw new JsonDecodeException(parser.getLocation()<a name="line.411"></a>
-<span class="sourceLineNo">412</span>                                                + ": No bean property for key " + e.getKey());<a name="line.412"></a>
+<span class="sourceLineNo">412</span>                                                + ": Unexpected Json event " + event);<a name="line.412"></a>
 <span class="sourceLineNo">413</span>                        }<a name="line.413"></a>
-<span class="sourceLineNo">414</span>                        setProperty(result, property, e.getValue());<a name="line.414"></a>
-<span class="sourceLineNo">415</span>                }<a name="line.415"></a>
-<span class="sourceLineNo">416</span>                return result;<a name="line.416"></a>
-<span class="sourceLineNo">417</span>        }<a name="line.417"></a>
-<span class="sourceLineNo">418</span><a name="line.418"></a>
-<span class="sourceLineNo">419</span>        private &lt;T&gt; T createBean(Class&lt;T&gt; beanCls, Map&lt;String, Object&gt; propsMap)<a name="line.419"></a>
-<span class="sourceLineNo">420</span>                        throws JsonDecodeException {<a name="line.420"></a>
-<span class="sourceLineNo">421</span>                try {<a name="line.421"></a>
-<span class="sourceLineNo">422</span>                        SortedMap&lt;ConstructorProperties, Constructor&lt;T&gt;&gt; cons<a name="line.422"></a>
-<span class="sourceLineNo">423</span>                                = new TreeMap&lt;&gt;(Comparator.comparingInt(<a name="line.423"></a>
-<span class="sourceLineNo">424</span>                                                (ConstructorProperties cp) -&gt; cp.value().length)<a name="line.424"></a>
-<span class="sourceLineNo">425</span>                                                .reversed());<a name="line.425"></a>
-<span class="sourceLineNo">426</span>                        for (Constructor&lt;?&gt; c : beanCls.getConstructors()) {<a name="line.426"></a>
-<span class="sourceLineNo">427</span>                                ConstructorProperties[] allCps = c.getAnnotationsByType(<a name="line.427"></a>
-<span class="sourceLineNo">428</span>                                        ConstructorProperties.class);<a name="line.428"></a>
-<span class="sourceLineNo">429</span>                                if (allCps.length &gt; 0) {<a name="line.429"></a>
-<span class="sourceLineNo">430</span>                                        @SuppressWarnings("unchecked")<a name="line.430"></a>
-<span class="sourceLineNo">431</span>                                        Constructor&lt;T&gt; beanConstructor = (Constructor&lt;T&gt;)c; <a name="line.431"></a>
-<span class="sourceLineNo">432</span>                                        cons.put(allCps[0], beanConstructor);<a name="line.432"></a>
-<span class="sourceLineNo">433</span>                                }<a name="line.433"></a>
-<span class="sourceLineNo">434</span>                        }<a name="line.434"></a>
-<span class="sourceLineNo">435</span>                        for (Map.Entry&lt;ConstructorProperties, Constructor&lt;T&gt;&gt; <a name="line.435"></a>
-<span class="sourceLineNo">436</span>                                e: cons.entrySet()) {<a name="line.436"></a>
-<span class="sourceLineNo">437</span>                                String[] conProps = e.getKey().value();<a name="line.437"></a>
-<span class="sourceLineNo">438</span>                                if (propsMap.keySet().containsAll(Arrays.asList(conProps))) {<a name="line.438"></a>
-<span class="sourceLineNo">439</span>                                        Object[] args = new Object[conProps.length];<a name="line.439"></a>
-<span class="sourceLineNo">440</span>                                        for (int i = 0; i &lt; conProps.length; i++) {<a name="line.440"></a>
-<span class="sourceLineNo">441</span>                                                args[i] = propsMap.remove(conProps[i]);<a name="line.441"></a>
-<span class="sourceLineNo">442</span>                                        }<a name="line.442"></a>
-<span class="sourceLineNo">443</span>                                        T result = e.getValue().newInstance(args);<a name="line.443"></a>
-<span class="sourceLineNo">444</span>                                        return result;<a name="line.444"></a>
-<span class="sourceLineNo">445</span>                                }<a name="line.445"></a>
-<span class="sourceLineNo">446</span>                        }<a name="line.446"></a>
-<span class="sourceLineNo">447</span>                        <a name="line.447"></a>
-<span class="sourceLineNo">448</span>                        return beanCls.newInstance();<a name="line.448"></a>
-<span class="sourceLineNo">449</span>                } catch (InstantiationException | IllegalAccessException <a name="line.449"></a>
-<span class="sourceLineNo">450</span>                                | IllegalArgumentException | InvocationTargetException e) {<a name="line.450"></a>
-<span class="sourceLineNo">451</span>                        throw new JsonDecodeException(parser.getLocation()<a name="line.451"></a>
-<span class="sourceLineNo">452</span>                                + ": Cannot create " + beanCls.getName(), e);<a name="line.452"></a>
-<span class="sourceLineNo">453</span>                }<a name="line.453"></a>
-<span class="sourceLineNo">454</span>        }<a name="line.454"></a>
-<span class="sourceLineNo">455</span><a name="line.455"></a>
-<span class="sourceLineNo">456</span>        private Map&lt;String, Object&gt; parseProperties(<a name="line.456"></a>
-<span class="sourceLineNo">457</span>                Map&lt;String, PropertyDescriptor&gt; beanProps, boolean inKeyState)<a name="line.457"></a>
-<span class="sourceLineNo">458</span>                throws JsonDecodeException {<a name="line.458"></a>
-<span class="sourceLineNo">459</span>                Map&lt;String,Object&gt; map = new HashMap&lt;&gt;();<a name="line.459"></a>
-<span class="sourceLineNo">460</span>                whileLoop:<a name="line.460"></a>
-<span class="sourceLineNo">461</span>                while (true) {<a name="line.461"></a>
-<span class="sourceLineNo">462</span>                        Event event = inKeyState ? Event.KEY_NAME : parser.next();<a name="line.462"></a>
-<span class="sourceLineNo">463</span>                        switch(event) {<a name="line.463"></a>
-<span class="sourceLineNo">464</span>                        case END_OBJECT:<a name="line.464"></a>
-<span class="sourceLineNo">465</span>                                break whileLoop;<a name="line.465"></a>
-<span class="sourceLineNo">466</span>                                <a name="line.466"></a>
-<span class="sourceLineNo">467</span>                        case KEY_NAME:<a name="line.467"></a>
-<span class="sourceLineNo">468</span>                                String key = parser.getString();<a name="line.468"></a>
-<span class="sourceLineNo">469</span>                                inKeyState = false;<a name="line.469"></a>
-<span class="sourceLineNo">470</span>                                PropertyDescriptor property = beanProps.get(key);<a name="line.470"></a>
-<span class="sourceLineNo">471</span>                                if (property == null) {<a name="line.471"></a>
-<span class="sourceLineNo">472</span>                                        throw new JsonDecodeException(parser.getLocation()<a name="line.472"></a>
-<span class="sourceLineNo">473</span>                                                        + ": No bean property for key " + key);<a name="line.473"></a>
-<span class="sourceLineNo">474</span>                                }<a name="line.474"></a>
-<span class="sourceLineNo">475</span>                                Object value = readValue(property.getPropertyType());<a name="line.475"></a>
-<span class="sourceLineNo">476</span>                                map.put(key, value);<a name="line.476"></a>
-<span class="sourceLineNo">477</span>                                break;<a name="line.477"></a>
-<span class="sourceLineNo">478</span>                                <a name="line.478"></a>
-<span class="sourceLineNo">479</span>                        default:<a name="line.479"></a>
-<span class="sourceLineNo">480</span>                                throw new JsonDecodeException(parser.getLocation()<a name="line.480"></a>
-<span class="sourceLineNo">481</span>                                                + ": Unexpected Json event " + event);<a name="line.481"></a>
-<span class="sourceLineNo">482</span>                        }<a name="line.482"></a>
+<span class="sourceLineNo">414</span>                }<a name="line.414"></a>
+<span class="sourceLineNo">415</span>        }<a name="line.415"></a>
+<span class="sourceLineNo">416</span>        <a name="line.416"></a>
+<span class="sourceLineNo">417</span>        private &lt;T&gt; T objectToBean(Class&lt;T&gt; beanCls, Event prefetched)<a name="line.417"></a>
+<span class="sourceLineNo">418</span>                        throws JsonDecodeException {<a name="line.418"></a>
+<span class="sourceLineNo">419</span>                Map&lt;String,PropertyDescriptor&gt; beanProps = new HashMap&lt;&gt;();<a name="line.419"></a>
+<span class="sourceLineNo">420</span>                try {<a name="line.420"></a>
+<span class="sourceLineNo">421</span>                        BeanInfo beanInfo = Introspector.getBeanInfo(beanCls, Object.class);<a name="line.421"></a>
+<span class="sourceLineNo">422</span>                        for (PropertyDescriptor <a name="line.422"></a>
+<span class="sourceLineNo">423</span>                                        p: beanInfo.getPropertyDescriptors()) {<a name="line.423"></a>
+<span class="sourceLineNo">424</span>                                beanProps.put(p.getName(), p);<a name="line.424"></a>
+<span class="sourceLineNo">425</span>                        }<a name="line.425"></a>
+<span class="sourceLineNo">426</span>                } catch (IntrospectionException e) {<a name="line.426"></a>
+<span class="sourceLineNo">427</span>                        throw new JsonDecodeException(parser.getLocation()<a name="line.427"></a>
+<span class="sourceLineNo">428</span>                                        + ": Cannot introspect " + beanCls);<a name="line.428"></a>
+<span class="sourceLineNo">429</span>                }<a name="line.429"></a>
+<span class="sourceLineNo">430</span>                <a name="line.430"></a>
+<span class="sourceLineNo">431</span>                // Get properties as map first.<a name="line.431"></a>
+<span class="sourceLineNo">432</span>                Map&lt;String, Object&gt; propsMap = parseProperties(beanProps, prefetched);<a name="line.432"></a>
+<span class="sourceLineNo">433</span>                <a name="line.433"></a>
+<span class="sourceLineNo">434</span>                // Prepare result, using constructor with parameters if available.<a name="line.434"></a>
+<span class="sourceLineNo">435</span>                T result = createBean(beanCls, propsMap);<a name="line.435"></a>
+<span class="sourceLineNo">436</span><a name="line.436"></a>
+<span class="sourceLineNo">437</span>                // Set (remaining) properties.<a name="line.437"></a>
+<span class="sourceLineNo">438</span>                for (Map.Entry&lt;String, ?&gt; e: propsMap.entrySet()) {<a name="line.438"></a>
+<span class="sourceLineNo">439</span>                        PropertyDescriptor property = beanProps.get(e.getKey());<a name="line.439"></a>
+<span class="sourceLineNo">440</span>                        if (property == null) {<a name="line.440"></a>
+<span class="sourceLineNo">441</span>                                throw new JsonDecodeException(parser.getLocation()<a name="line.441"></a>
+<span class="sourceLineNo">442</span>                                                + ": No bean property for key " + e.getKey());<a name="line.442"></a>
+<span class="sourceLineNo">443</span>                        }<a name="line.443"></a>
+<span class="sourceLineNo">444</span>                        setProperty(result, property, e.getValue());<a name="line.444"></a>
+<span class="sourceLineNo">445</span>                }<a name="line.445"></a>
+<span class="sourceLineNo">446</span>                return result;<a name="line.446"></a>
+<span class="sourceLineNo">447</span>        }<a name="line.447"></a>
+<span class="sourceLineNo">448</span><a name="line.448"></a>
+<span class="sourceLineNo">449</span>        private &lt;T&gt; T createBean(Class&lt;T&gt; beanCls, Map&lt;String, Object&gt; propsMap)<a name="line.449"></a>
+<span class="sourceLineNo">450</span>                        throws JsonDecodeException {<a name="line.450"></a>
+<span class="sourceLineNo">451</span>                try {<a name="line.451"></a>
+<span class="sourceLineNo">452</span>                        SortedMap&lt;ConstructorProperties, Constructor&lt;T&gt;&gt; cons<a name="line.452"></a>
+<span class="sourceLineNo">453</span>                                = new TreeMap&lt;&gt;(Comparator.comparingInt(<a name="line.453"></a>
+<span class="sourceLineNo">454</span>                                                (ConstructorProperties cp) -&gt; cp.value().length)<a name="line.454"></a>
+<span class="sourceLineNo">455</span>                                                .reversed());<a name="line.455"></a>
+<span class="sourceLineNo">456</span>                        for (Constructor&lt;?&gt; c : beanCls.getConstructors()) {<a name="line.456"></a>
+<span class="sourceLineNo">457</span>                                ConstructorProperties[] allCps = c.getAnnotationsByType(<a name="line.457"></a>
+<span class="sourceLineNo">458</span>                                        ConstructorProperties.class);<a name="line.458"></a>
+<span class="sourceLineNo">459</span>                                if (allCps.length &gt; 0) {<a name="line.459"></a>
+<span class="sourceLineNo">460</span>                                        @SuppressWarnings("unchecked")<a name="line.460"></a>
+<span class="sourceLineNo">461</span>                                        Constructor&lt;T&gt; beanConstructor = (Constructor&lt;T&gt;)c; <a name="line.461"></a>
+<span class="sourceLineNo">462</span>                                        cons.put(allCps[0], beanConstructor);<a name="line.462"></a>
+<span class="sourceLineNo">463</span>                                }<a name="line.463"></a>
+<span class="sourceLineNo">464</span>                        }<a name="line.464"></a>
+<span class="sourceLineNo">465</span>                        for (Map.Entry&lt;ConstructorProperties, Constructor&lt;T&gt;&gt; <a name="line.465"></a>
+<span class="sourceLineNo">466</span>                                e: cons.entrySet()) {<a name="line.466"></a>
+<span class="sourceLineNo">467</span>                                String[] conProps = e.getKey().value();<a name="line.467"></a>
+<span class="sourceLineNo">468</span>                                if (propsMap.keySet().containsAll(Arrays.asList(conProps))) {<a name="line.468"></a>
+<span class="sourceLineNo">469</span>                                        Object[] args = new Object[conProps.length];<a name="line.469"></a>
+<span class="sourceLineNo">470</span>                                        for (int i = 0; i &lt; conProps.length; i++) {<a name="line.470"></a>
+<span class="sourceLineNo">471</span>                                                args[i] = propsMap.remove(conProps[i]);<a name="line.471"></a>
+<span class="sourceLineNo">472</span>                                        }<a name="line.472"></a>
+<span class="sourceLineNo">473</span>                                        T result = e.getValue().newInstance(args);<a name="line.473"></a>
+<span class="sourceLineNo">474</span>                                        return result;<a name="line.474"></a>
+<span class="sourceLineNo">475</span>                                }<a name="line.475"></a>
+<span class="sourceLineNo">476</span>                        }<a name="line.476"></a>
+<span class="sourceLineNo">477</span>                        <a name="line.477"></a>
+<span class="sourceLineNo">478</span>                        return beanCls.newInstance();<a name="line.478"></a>
+<span class="sourceLineNo">479</span>                } catch (InstantiationException | IllegalAccessException <a name="line.479"></a>
+<span class="sourceLineNo">480</span>                                | IllegalArgumentException | InvocationTargetException e) {<a name="line.480"></a>
+<span class="sourceLineNo">481</span>                        throw new JsonDecodeException(parser.getLocation()<a name="line.481"></a>
+<span class="sourceLineNo">482</span>                                + ": Cannot create " + beanCls.getName(), e);<a name="line.482"></a>
 <span class="sourceLineNo">483</span>                }<a name="line.483"></a>
-<span class="sourceLineNo">484</span>                return map;<a name="line.484"></a>
-<span class="sourceLineNo">485</span>        }<a name="line.485"></a>
-<span class="sourceLineNo">486</span>        <a name="line.486"></a>
-<span class="sourceLineNo">487</span>        private &lt;T&gt; void setProperty(T obj, PropertyDescriptor property,<a name="line.487"></a>
-<span class="sourceLineNo">488</span>                Object value) throws JsonDecodeException {<a name="line.488"></a>
-<span class="sourceLineNo">489</span>                try {<a name="line.489"></a>
-<span class="sourceLineNo">490</span>                        Method writeMethod = property.getWriteMethod();<a name="line.490"></a>
-<span class="sourceLineNo">491</span>                        if (writeMethod != null) {<a name="line.491"></a>
-<span class="sourceLineNo">492</span>                                writeMethod.invoke(obj, value);<a name="line.492"></a>
-<span class="sourceLineNo">493</span>                                return;<a name="line.493"></a>
-<span class="sourceLineNo">494</span>                        }<a name="line.494"></a>
-<span class="sourceLineNo">495</span>                        Field propField = findField(obj.getClass(), property.getName());<a name="line.495"></a>
-<span class="sourceLineNo">496</span>                        if (!propField.isAccessible()) {<a name="line.496"></a>
-<span class="sourceLineNo">497</span>                                propField.setAccessible(true);<a name="line.497"></a>
-<span class="sourceLineNo">498</span>                        }<a name="line.498"></a>
-<span class="sourceLineNo">499</span>                        propField.set(obj, value);<a name="line.499"></a>
-<span class="sourceLineNo">500</span>                } catch (IllegalAccessException | IllegalArgumentException<a name="line.500"></a>
-<span class="sourceLineNo">501</span>                        | InvocationTargetException | NoSuchFieldException e) {<a name="line.501"></a>
-<span class="sourceLineNo">502</span>                        throw new JsonDecodeException(parser.getLocation()<a name="line.502"></a>
-<span class="sourceLineNo">503</span>                                        + ": Cannot write property " + property.getName(), e);<a name="line.503"></a>
-<span class="sourceLineNo">504</span>                }<a name="line.504"></a>
-<span class="sourceLineNo">505</span>        }<a name="line.505"></a>
-<span class="sourceLineNo">506</span><a name="line.506"></a>
-<span class="sourceLineNo">507</span>        private Field findField(Class&lt;?&gt; cls, String fieldName) <a name="line.507"></a>
-<span class="sourceLineNo">508</span>                        throws NoSuchFieldException {<a name="line.508"></a>
-<span class="sourceLineNo">509</span>                if (cls.equals(Object.class)) {<a name="line.509"></a>
-<span class="sourceLineNo">510</span>                        throw new NoSuchFieldException();<a name="line.510"></a>
-<span class="sourceLineNo">511</span>                }<a name="line.511"></a>
-<span class="sourceLineNo">512</span>                try {<a name="line.512"></a>
-<span class="sourceLineNo">513</span>                        return cls.getDeclaredField(fieldName);<a name="line.513"></a>
-<span class="sourceLineNo">514</span>                } catch (NoSuchFieldException e) {<a name="line.514"></a>
-<span class="sourceLineNo">515</span>                        return findField(cls.getSuperclass(), fieldName);<a name="line.515"></a>
-<span class="sourceLineNo">516</span>                }<a name="line.516"></a>
-<span class="sourceLineNo">517</span>        }<a name="line.517"></a>
-<span class="sourceLineNo">518</span>}<a name="line.518"></a>
+<span class="sourceLineNo">484</span>        }<a name="line.484"></a>
+<span class="sourceLineNo">485</span><a name="line.485"></a>
+<span class="sourceLineNo">486</span>        private Map&lt;String, Object&gt; parseProperties(<a name="line.486"></a>
+<span class="sourceLineNo">487</span>                Map&lt;String, PropertyDescriptor&gt; beanProps, Event prefetched)<a name="line.487"></a>
+<span class="sourceLineNo">488</span>                throws JsonDecodeException {<a name="line.488"></a>
+<span class="sourceLineNo">489</span>                Map&lt;String,Object&gt; map = new HashMap&lt;&gt;();<a name="line.489"></a>
+<span class="sourceLineNo">490</span>                whileLoop:<a name="line.490"></a>
+<span class="sourceLineNo">491</span>                while (true) {<a name="line.491"></a>
+<span class="sourceLineNo">492</span>                        Event event = prefetched != null ? prefetched : parser.next();<a name="line.492"></a>
+<span class="sourceLineNo">493</span>                        prefetched = null; // Consumed.<a name="line.493"></a>
+<span class="sourceLineNo">494</span>                        switch(event) {<a name="line.494"></a>
+<span class="sourceLineNo">495</span>                        case END_OBJECT:<a name="line.495"></a>
+<span class="sourceLineNo">496</span>                                break whileLoop;<a name="line.496"></a>
+<span class="sourceLineNo">497</span>                                <a name="line.497"></a>
+<span class="sourceLineNo">498</span>                        case KEY_NAME:<a name="line.498"></a>
+<span class="sourceLineNo">499</span>                                String key = parser.getString();<a name="line.499"></a>
+<span class="sourceLineNo">500</span>                                PropertyDescriptor property = beanProps.get(key);<a name="line.500"></a>
+<span class="sourceLineNo">501</span>                                if (property == null) {<a name="line.501"></a>
+<span class="sourceLineNo">502</span>                                        throw new JsonDecodeException(parser.getLocation()<a name="line.502"></a>
+<span class="sourceLineNo">503</span>                                                        + ": No bean property for key " + key);<a name="line.503"></a>
+<span class="sourceLineNo">504</span>                                }<a name="line.504"></a>
+<span class="sourceLineNo">505</span>                                Object value = readValue(property.getPropertyType());<a name="line.505"></a>
+<span class="sourceLineNo">506</span>                                map.put(key, value);<a name="line.506"></a>
+<span class="sourceLineNo">507</span>                                break;<a name="line.507"></a>
+<span class="sourceLineNo">508</span>                                <a name="line.508"></a>
+<span class="sourceLineNo">509</span>                        default:<a name="line.509"></a>
+<span class="sourceLineNo">510</span>                                throw new JsonDecodeException(parser.getLocation()<a name="line.510"></a>
+<span class="sourceLineNo">511</span>                                                + ": Unexpected Json event " + event);<a name="line.511"></a>
+<span class="sourceLineNo">512</span>                        }<a name="line.512"></a>
+<span class="sourceLineNo">513</span>                }<a name="line.513"></a>
+<span class="sourceLineNo">514</span>                return map;<a name="line.514"></a>
+<span class="sourceLineNo">515</span>        }<a name="line.515"></a>
+<span class="sourceLineNo">516</span>        <a name="line.516"></a>
+<span class="sourceLineNo">517</span>        private &lt;T&gt; void setProperty(T obj, PropertyDescriptor property,<a name="line.517"></a>
+<span class="sourceLineNo">518</span>                Object value) throws JsonDecodeException {<a name="line.518"></a>
+<span class="sourceLineNo">519</span>                try {<a name="line.519"></a>
+<span class="sourceLineNo">520</span>                        Method writeMethod = property.getWriteMethod();<a name="line.520"></a>
+<span class="sourceLineNo">521</span>                        if (writeMethod != null) {<a name="line.521"></a>
+<span class="sourceLineNo">522</span>                                writeMethod.invoke(obj, value);<a name="line.522"></a>
+<span class="sourceLineNo">523</span>                                return;<a name="line.523"></a>
+<span class="sourceLineNo">524</span>                        }<a name="line.524"></a>
+<span class="sourceLineNo">525</span>                        Field propField = findField(obj.getClass(), property.getName());<a name="line.525"></a>
+<span class="sourceLineNo">526</span>                        if (!propField.isAccessible()) {<a name="line.526"></a>
+<span class="sourceLineNo">527</span>                                propField.setAccessible(true);<a name="line.527"></a>
+<span class="sourceLineNo">528</span>                        }<a name="line.528"></a>
+<span class="sourceLineNo">529</span>                        propField.set(obj, value);<a name="line.529"></a>
+<span class="sourceLineNo">530</span>                } catch (IllegalAccessException | IllegalArgumentException<a name="line.530"></a>
+<span class="sourceLineNo">531</span>                        | InvocationTargetException | NoSuchFieldException e) {<a name="line.531"></a>
+<span class="sourceLineNo">532</span>                        throw new JsonDecodeException(parser.getLocation()<a name="line.532"></a>
+<span class="sourceLineNo">533</span>                                        + ": Cannot write property " + property.getName(), e);<a name="line.533"></a>
+<span class="sourceLineNo">534</span>                }<a name="line.534"></a>
+<span class="sourceLineNo">535</span>        }<a name="line.535"></a>
+<span class="sourceLineNo">536</span><a name="line.536"></a>
+<span class="sourceLineNo">537</span>        private Field findField(Class&lt;?&gt; cls, String fieldName) <a name="line.537"></a>
+<span class="sourceLineNo">538</span>                        throws NoSuchFieldException {<a name="line.538"></a>
+<span class="sourceLineNo">539</span>                if (cls.equals(Object.class)) {<a name="line.539"></a>
+<span class="sourceLineNo">540</span>                        throw new NoSuchFieldException();<a name="line.540"></a>
+<span class="sourceLineNo">541</span>                }<a name="line.541"></a>
+<span class="sourceLineNo">542</span>                try {<a name="line.542"></a>
+<span class="sourceLineNo">543</span>                        return cls.getDeclaredField(fieldName);<a name="line.543"></a>
+<span class="sourceLineNo">544</span>                } catch (NoSuchFieldException e) {<a name="line.544"></a>
+<span class="sourceLineNo">545</span>                        return findField(cls.getSuperclass(), fieldName);<a name="line.545"></a>
+<span class="sourceLineNo">546</span>                }<a name="line.546"></a>
+<span class="sourceLineNo">547</span>        }<a name="line.547"></a>
+<span class="sourceLineNo">548</span>}<a name="line.548"></a>
 
 
 
