@@ -182,10 +182,27 @@ public class JsonBeanDecoder extends JsonCoder {
 		return readValue(HashMap.class);
 	}
 
+	/**
+	 * Read a JSON object description into a new object of the
+	 * expected type. The result may have a type derived from
+	 * the expected type if the JSON read has a `class` key.
+	 * 
+	 * @param expected the expected type
+	 * @return the result
+	 * @throws JsonDecodeException
+	 */
 	public <T> T readObject(Class<T> expected) throws JsonDecodeException {
 		return readValue(expected);
 	}
 	
+	/**
+	 * Read a JSON array description into a new array of the
+	 * expected type.
+	 * 
+	 * @param expected the expected type
+	 * @return the result
+	 * @throws JsonDecodeException
+	 */
 	public <T> T readArray(Class<T> expected) throws JsonDecodeException {
 		return readValue(expected);
 	}
@@ -273,27 +290,7 @@ public class JsonBeanDecoder extends JsonCoder {
 	@SuppressWarnings("unchecked")
 	private <T> Object readArrayValue(Class<T> arrayType) 
 			throws JsonDecodeException {
-		Collection<T> items;
-		if (!Collection.class.isAssignableFrom(arrayType)) {
-			items = new ArrayList<>();
-		} else {
-			if (arrayType.isInterface()) {
-				// This is how things should be: interface type
-				if (Set.class.isAssignableFrom(arrayType)) {
-					items = new HashSet<>();
-				} else {
-					items = new ArrayList<>();
-				}
-			} else {
-				// Implementation type, we'll try our best
-				try {
-					items = (Collection<T>)arrayType.newInstance();
-				} catch (InstantiationException | IllegalAccessException e) {
-					throw new JsonDecodeException(parser.getLocation()
-							+ ": Cannot create " + arrayType.getName(), e);
-				}
-			} 
-		}
+		Collection<T> items = createCollection(arrayType);
 		Class<?> itemType = Object.class;
 		if (arrayType.isArray()) {
 			itemType = arrayType.getComponentType();
@@ -314,6 +311,29 @@ public class JsonBeanDecoder extends JsonCoder {
 			Array.set(result, index++, o);
 		}
 		return result;
+	}
+
+	private <T> Collection<T> createCollection(Class<T> arrayType)
+			throws JsonDecodeException {
+		if (!Collection.class.isAssignableFrom(arrayType)) {
+			return new ArrayList<>();
+		}
+		if (arrayType.isInterface()) {
+			// This is how things should be: interface type
+			if (Set.class.isAssignableFrom(arrayType)) {
+				return new HashSet<>();
+			}
+			return new ArrayList<>();
+		}
+		// Implementation type, we'll try our best
+		try {
+			@SuppressWarnings("unchecked")
+			Collection<T> result = (Collection<T>)arrayType.newInstance();
+			return result;
+		} catch (InstantiationException | IllegalAccessException e) {
+			throw new JsonDecodeException(parser.getLocation()
+					+ ": Cannot create " + arrayType.getName(), e);
+		}
 	}
 	
 	private <T> T readObjectValue(Class<T> expected) 

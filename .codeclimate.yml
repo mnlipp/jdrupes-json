@@ -1,4 +1,15 @@
 ---
+version: "2"         # required to adjust maintainability checks
+checks:
+  file-lines:
+    config:
+      threshold: 400 # Encoders/Decoders are complex...
+  method-lines:
+    config:
+      threshold: 40 # Default of 25 is ridiculous
+  return-statements:
+    config:
+      threshold: 10 # I think they simplify things
 engines:
   checkstyle:
     enabled: true
