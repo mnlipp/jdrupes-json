@@ -1,7 +1,6 @@
 package org.jdrupes.json.test;
 
 import java.beans.ConstructorProperties;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -90,10 +89,9 @@ public class DecodeBeanTests {
 		String json = "{\"age\":42,\"name\":\"Simon Sample\",\""
 				+ "numbers\":[{\"name\":\"Home\",\"number\":\"06751 51 56 57\"},"
 				+ "{\"class\":\"SpecialNumber\",\"name\":\"Work\",\"number\":\"030 77 35 44\"}]}";
-		@SuppressWarnings("unchecked")
 		Map<String,?> result = JsonBeanDecoder.create(json)
 				.addAlias(SpecialNumber.class, "SpecialNumber")
-				.readObject(HashMap.class);
+				.readObject();
 		assertNotEquals(null, result);
 		assertEquals(42L, result.get("age"));
 		assertEquals(((List<?>)result.get("numbers")).size(), 2);

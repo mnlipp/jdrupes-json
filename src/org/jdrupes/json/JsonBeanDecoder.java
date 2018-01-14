@@ -171,9 +171,15 @@ public class JsonBeanDecoder extends JsonCoder {
 		this.parser = parser;
 	}
 
-	public Map<String,?> readObject() {
-		Map <String,?> root = new HashMap<>();
-		return root;
+	/**
+	 * Read a JSON object description into a new {@link Map}.
+	 * 
+	 * @return the Map
+	 * @throws JsonDecodeException
+	 */
+	@SuppressWarnings("unchecked")
+	public Map<String,?> readObject() throws JsonDecodeException {
+		return readValue(HashMap.class);
 	}
 
 	public <T> T readObject(Class<T> expected) throws JsonDecodeException {
