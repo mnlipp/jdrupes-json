@@ -178,7 +178,7 @@ public class JsonBeanDecoder extends JsonCoder {
 	 * @throws JsonDecodeException
 	 */
 	@SuppressWarnings("unchecked")
-	public Map<String,?> readObject() throws JsonDecodeException {
+	public Map<String,Object> readObject() throws JsonDecodeException {
 		return readValue(HashMap.class);
 	}
 
@@ -318,20 +318,24 @@ public class JsonBeanDecoder extends JsonCoder {
 	
 	private <T> T readObjectValue(Class<T> expected) 
 			throws JsonDecodeException {
-		Event event = parser.next();
-		if (!event.equals(Event.KEY_NAME)) {
+		Event prefetched = parser.next();
+		if (!prefetched.equals(Event.KEY_NAME)
+				&& !prefetched.equals(Event.END_OBJECT)) {
 			throw new JsonDecodeException(parser.getLocation()
-					+ ": Unexpected Json event " + event);
+					+ ": Unexpected Json event " + prefetched);
 		}
-		String key = parser.getString();		
 		Class<?> actualCls = expected;
-		if ("class".equals(key)) {
-			parser.next();
-			String provided = parser.getString();
-			if (aliases.containsKey(provided)) {
-				actualCls = aliases.get(provided);
-			} else {
-				actualCls = classConverter.apply(provided).orElse(HashMap.class);
+		if (prefetched.equals(Event.KEY_NAME)) {
+			String key = parser.getString();		
+			if ("class".equals(key)) {
+				prefetched = null; // Now it's consumed
+				parser.next();
+				String provided = parser.getString();
+				if (aliases.containsKey(provided)) {
+					actualCls = aliases.get(provided);
+				} else {
+					actualCls = classConverter.apply(provided).orElse(HashMap.class);
+				}
 			}
 		}
 		if (!expected.isAssignableFrom(actualCls)) {
@@ -343,42 +347,44 @@ public class JsonBeanDecoder extends JsonCoder {
 			actualCls = HashMap.class;
 		}
 		if (Map.class.isAssignableFrom(actualCls)) {
-			T result = null;
-			try {
-				@SuppressWarnings("unchecked")
-				T res = (T)actualCls.newInstance();
-				result = res;
-			} catch (InstantiationException
-					| IllegalAccessException e) {
-				throw new JsonDecodeException(parser.getLocation()
-						+ ": Cannot create " + actualCls.getName(), e);
-			}
 			@SuppressWarnings("unchecked")
-			Map<String,?> map = (Map<String,?>)result;
-			objectToMap(map, !"class".equals(key));
+			Map<String,Object> map = createMapInstance(
+					(Class<Map<String,Object>>)actualCls);
+			objectIntoMap(map, prefetched);
+			@SuppressWarnings("unchecked")
+			T result = (T)map;
 			return result;
 		}
 		@SuppressWarnings("unchecked")
 		Class<T> beanCls = (Class<T>)actualCls;
-		return objectToBean(beanCls, !"class".equals(key));
+		return objectToBean(beanCls, prefetched);
 	}
 
-	private Map<String,?> objectToMap(Map<String,?> result, boolean inKeyState)
+	private <M extends Map<String,Object>> M createMapInstance (Class<M> mapCls) 
+			throws JsonDecodeException {
+		try {
+			return (M)mapCls.newInstance();
+		} catch (InstantiationException
+				| IllegalAccessException e) {
+			throw new JsonDecodeException(parser.getLocation()
+					+ ": Cannot create " + mapCls.getName(), e);
+		}
+	}
+	
+	private void objectIntoMap(Map<String,Object> result, Event prefetched)
 			throws JsonDecodeException {
 		whileLoop:
 		while (true) {
-			Event event = inKeyState ? Event.KEY_NAME : parser.next();
+			Event event = prefetched != null ? prefetched : parser.next();
+			prefetched = null; // Consumed.
 			switch(event) {
 			case END_OBJECT:
 				break whileLoop;
 				
 			case KEY_NAME:
 				String key = parser.getString();
-				inKeyState = false;
 				Object value = readValue(Object.class);
-				@SuppressWarnings("unchecked")
-				Map<String,Object> map = (Map<String,Object>)result;
-				map.put(key, value);
+				result.put(key, value);
 				break;
 				
 			default:
@@ -386,11 +392,9 @@ public class JsonBeanDecoder extends JsonCoder {
 						+ ": Unexpected Json event " + event);
 			}
 		}
-		return result;
-		
 	}
 	
-	private <T> T objectToBean(Class<T> beanCls, boolean inKeyState)
+	private <T> T objectToBean(Class<T> beanCls, Event prefetched)
 			throws JsonDecodeException {
 		Map<String,PropertyDescriptor> beanProps = new HashMap<>();
 		try {
@@ -405,7 +409,7 @@ public class JsonBeanDecoder extends JsonCoder {
 		}
 		
 		// Get properties as map first.
-		Map<String, Object> propsMap = parseProperties(beanProps, inKeyState);
+		Map<String, Object> propsMap = parseProperties(beanProps, prefetched);
 		
 		// Prepare result, using constructor with parameters if available.
 		T result = createBean(beanCls, propsMap);
@@ -460,19 +464,19 @@ public class JsonBeanDecoder extends JsonCoder {
 	}
 
 	private Map<String, Object> parseProperties(
-	        Map<String, PropertyDescriptor> beanProps, boolean inKeyState)
+	        Map<String, PropertyDescriptor> beanProps, Event prefetched)
 	        throws JsonDecodeException {
 		Map<String,Object> map = new HashMap<>();
 		whileLoop:
 		while (true) {
-			Event event = inKeyState ? Event.KEY_NAME : parser.next();
+			Event event = prefetched != null ? prefetched : parser.next();
+			prefetched = null; // Consumed.
 			switch(event) {
 			case END_OBJECT:
 				break whileLoop;
 				
 			case KEY_NAME:
 				String key = parser.getString();
-				inKeyState = false;
 				PropertyDescriptor property = beanProps.get(key);
 				if (property == null) {
 					throw new JsonDecodeException(parser.getLocation()

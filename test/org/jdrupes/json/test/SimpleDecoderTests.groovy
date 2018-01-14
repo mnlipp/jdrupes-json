@@ -8,6 +8,16 @@ import spock.lang.*
 
 class SimpleDecoderTests extends Specification {
 
+	void "Empty Object Test"() {
+		when:
+		String json = '{}';
+		Map result = JsonBeanDecoder.create(json).readObject();
+		
+		then:
+		result.size() == 0
+	}
+
+
 	void "Basic Array Test"() {		
 		when:
 		String json = '[[11,12,13],[21,22]]';
