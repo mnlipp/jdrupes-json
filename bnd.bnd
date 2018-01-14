@@ -1,11 +1,9 @@
 Bundle-Name: JDrupes JSON Library
 Bundle-SymbolicName: org.jdrupes.json
-#Bundle-Version: 1.0.4.-${tstamp}
-Bundle-Version: 1.0.4.rel
 Bundle-Copyright: Michael N. Lipp (c) 2017
 Bundle-License: http://www.gnu.org/licenses/lgpl-3.0.txt
+Bundle-Version: ${def;bundleVersion;0}
 
-base_version = ${versionmask;===;${Bundle-Version}}
 # This is used as the general API version for all packages.
 # This being a library, individual API versions for packages don't 
 # really make sense.
@@ -16,17 +14,11 @@ api_version = 1.0.0.${tstamp}
 -dsannotations: 
 testbin=bin
 
--plugin.1.Released: \
-    aQute.bnd.repository.maven.pom.provider.BndPomRepository; \
-        releaseUrls='https://repo1.maven.org/maven2/'; \
-        query='q=g:%22org.jdrupes.json%22'; \
-        name=Released
-        
 -baseline: *
--baselinerepository: Released
 
 -fixupmessages: \
 	"The .classpath contains an unknown container: GROOVY_DSL_SUPPORT. This could make your build less portable.", \
-	"The .classpath contains an unknown container: org.eclipse.buildship.core.gradleclasspathcontainer. This could make your build less portable."
+	"The .classpath contains an unknown container: org.eclipse.buildship.core.gradleclasspathcontainer. This could make your build less portable.", \
+    "The build path does not refer to the bnd container 'aQute.bnd.classpath.container'"
 	
 Export-Package: org.jdrupes.json
