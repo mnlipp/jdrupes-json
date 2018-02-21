@@ -380,7 +380,7 @@ public class JsonBeanDecoder extends JsonCoder {
 		return objectToBean(beanCls, prefetched);
 	}
 
-	private <M extends Map<String,Object>> M createMapInstance (Class<M> mapCls) 
+	private <M extends Map<String,Object>> M createMapInstance(Class<M> mapCls) 
 			throws JsonDecodeException {
 		try {
 			return (M)mapCls.newInstance();
