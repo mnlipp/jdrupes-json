@@ -225,17 +225,18 @@ public class JsonBeanEncoder extends JsonCoder {
 			throw new IllegalStateException(
 					"JsonBeanEncoder has been created without a known writer.");
 		}
-		gen.flush();
 		return writer.toString();
 	}
 	
 	public JsonBeanEncoder writeArray(Object... items) {
 		doWriteObject(items, items.getClass());
+		gen.flush();
 		return this;
 	}
 	
 	public JsonBeanEncoder writeObject(Object obj) {
 		doWriteObject(obj, obj.getClass());
+		gen.flush();
 		return this;
 	}
 	
