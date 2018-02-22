@@ -25,6 +25,9 @@ import java.beans.PropertyDescriptor;
 import java.beans.PropertyEditor;
 import java.beans.PropertyEditorManager;
 import java.beans.Transient;
+import java.io.Closeable;
+import java.io.Flushable;
+import java.io.IOException;
 import java.io.StringWriter;
 import java.io.Writer;
 import java.lang.reflect.InvocationTargetException;
@@ -137,7 +140,8 @@ import javax.json.stream.JsonGenerator;
  * 
  * 
  */
-public class JsonBeanEncoder extends JsonCoder {
+public class JsonBeanEncoder extends JsonCoder 
+	implements Flushable, Closeable {
 
 	private static final Set<String> EXCLUDED_DEFAULT = new HashSet<>();
 
@@ -212,6 +216,16 @@ public class JsonBeanEncoder extends JsonCoder {
 
 	private JsonBeanEncoder(JsonGenerator generator) {
 		gen = generator;
+	}
+
+	@Override
+	public void flush() throws IOException {
+		gen.flush();
+	}
+
+	@Override
+	public void close() throws IOException {
+		gen.close();
 	}
 
 	/**
