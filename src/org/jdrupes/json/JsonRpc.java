@@ -1,6 +1,6 @@
 /*
  * This file is part of the JDrupes JSON utilities project.
- * Copyright (C) 2017  Michael N. Lipp
+ * Copyright (C) 2017, 2018  Michael N. Lipp
  *
  * This program is free software; you can redistribute it and/or modify it 
  * under the terms of the GNU Lesser General Public License as published
@@ -18,27 +18,32 @@
 
 package org.jdrupes.json;
 
-import com.fasterxml.jackson.core.JsonFactory;
+import java.util.Optional;
 
-/**
- * The base class for the {@link JsonBeanEncoder} and {@link JsonBeanDecoder}.
- */
-public abstract class JsonCoder {
-
-	private static JsonFactory defaultFactory = new JsonFactory();
-	
-	protected static JsonFactory defaultFactory() {
-		return defaultFactory;
-	}
+public interface JsonRpc {
 	
 	/**
-	 * Add an alias for the given class. If defined, the alias
-	 * will be used instead of the class name by the encoder.
+	 * The invoked method.
 	 * 
-	 * @param clazz the class
-	 * @param alias the alias
-	 * @return the object for easy chaining
+	 * @return the method
 	 */
-	public abstract JsonCoder addAlias(Class<?> clazz, String alias);
-	
+	String method();
+
+	/**
+	 * The parameters.
+	 * 
+	 * @return the params
+	 */
+	JsonArray params();
+
+	/**
+	 * An optional request id.
+	 * 
+	 * @return the id
+	 */
+	Optional<Object> id();
+
+	public static JsonRpc fromJsonObject(JsonObject object) {
+		return new JsonRpcObject(object);
+	}
 }

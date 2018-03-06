@@ -1,6 +1,6 @@
 /*
  * This file is part of the JDrupes JSON utilities project.
- * Copyright (C) 2017  Michael N. Lipp
+ * Copyright (C) 2017, 2018  Michael N. Lipp
  *
  * This program is free software; you can redistribute it and/or modify it 
  * under the terms of the GNU Lesser General Public License as published
@@ -18,6 +18,9 @@
 
 package org.jdrupes.json;
 
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonToken;
+
 import java.beans.BeanInfo;
 import java.beans.ConstructorProperties;
 import java.beans.IntrospectionException;
@@ -25,8 +28,8 @@ import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
 import java.beans.PropertyEditor;
 import java.beans.PropertyEditorManager;
+import java.io.IOException;
 import java.io.Reader;
-import java.io.StringReader;
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
@@ -47,10 +50,6 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.function.Function;
 
-import javax.json.Json;
-import javax.json.stream.JsonParser;
-import javax.json.stream.JsonParser.Event;
-
 /**
  * Decoder for converting JSON to a Java object graph. The decoding
  * is based on the expected type passed to the decode method.
@@ -68,7 +67,7 @@ import javax.json.stream.JsonParser.Event;
  *  * In all cases above, the element type is passed 
  *    as expected type when decoding the members of the JSON array.
  *  * If the expected type is an {@link Object} and the JSON input
- *    is a JSON object, the input is converted to a {@link HashMap}.
+ *    is a JSON object, the input is converted to a {@link JsonObject}.
  *  * If the expected type is neither of the above, it is assumed
  *    to be a JavaBean and the JSON input must be a JSON object.
  *    The key/value pairs of the JSON input are interpreted as properties
@@ -99,7 +98,7 @@ import javax.json.stream.JsonParser.Event;
  *  the converter set with {@link JsonBeanDecoder#setClassConverter(Function)}
  *  is used to convert the name to a class. The function defaults
  *  to {@link Class#forName(String)}. If the converter does not
- *  return a result, a {@link HashMap} is used as container for 
+ *  return a result, a {@link JsonObject} is used as container for 
  *  the values provided by the JSON object.
  */
 public class JsonBeanDecoder extends JsonCoder {
@@ -142,7 +141,11 @@ public class JsonBeanDecoder extends JsonCoder {
 	 * @return the decoder
 	 */
 	public static JsonBeanDecoder create(Reader in) {
-		return new JsonBeanDecoder(Json.createParser(in));
+		try {
+			return new JsonBeanDecoder(defaultFactory().createParser(in));
+		} catch (IOException e) {
+			throw new IllegalArgumentException(e);
+		}
 	}
 
 	/**
@@ -153,8 +156,11 @@ public class JsonBeanDecoder extends JsonCoder {
 	 * @return the decoder
 	 */
 	public static JsonBeanDecoder create(String input) {
-		StringReader reader = new StringReader(input);
-		return new JsonBeanDecoder(Json.createParser(reader));
+		try {
+			return new JsonBeanDecoder(defaultFactory().createParser(input));
+		} catch (IOException e) {
+			throw new IllegalArgumentException(e);
+		}
 	}
 
 	/**
@@ -168,18 +174,24 @@ public class JsonBeanDecoder extends JsonCoder {
 	}
 
 	public JsonBeanDecoder(JsonParser parser) {
+		if (parser == null) {
+			throw new IllegalArgumentException("Parser may not be null.");
+		}
 		this.parser = parser;
 	}
 
 	/**
-	 * Read a JSON object description into a new {@link Map}.
+	 * Read a JSON object description into a new {@link JsonObject}.
 	 * 
-	 * @return the Map
+	 * @return the object
 	 * @throws JsonDecodeException
 	 */
-	@SuppressWarnings("unchecked")
-	public Map<String,Object> readObject() throws JsonDecodeException {
-		return readValue(HashMap.class);
+	public JsonObject readObject() throws JsonDecodeException {
+		try {
+			return readValue(JsonObject.class);
+		} catch (IOException e) {
+			throw new JsonDecodeException(e);
+		}
 	}
 
 	/**
@@ -192,27 +204,40 @@ public class JsonBeanDecoder extends JsonCoder {
 	 * @throws JsonDecodeException
 	 */
 	public <T> T readObject(Class<T> expected) throws JsonDecodeException {
-		return readValue(expected);
+		try {
+			return readValue(expected);
+		} catch (IOException e) {
+			throw new JsonDecodeException(e);
+		}
 	}
 	
 	/**
 	 * Read a JSON array description into a new array of the
 	 * expected type.
-	 * 
+	 *
+	 * @param <T> the generic type
 	 * @param expected the expected type
 	 * @return the result
 	 * @throws JsonDecodeException
 	 */
 	public <T> T readArray(Class<T> expected) throws JsonDecodeException {
-		return readValue(expected);
+		try {
+			return readValue(expected);
+		} catch (IOException e) {
+			throw new JsonDecodeException(e);
+		}
 	}
 
 	private static final Object END_VALUE = new Object();
 	
 	@SuppressWarnings("unchecked")
 	private <T> T readValue(Class<T> expected) 
-			throws JsonDecodeException {
-		switch(parser.next()) {
+			throws JsonDecodeException, IOException {
+		JsonToken token = parser.nextToken();
+		if (token == null) {
+			return null;
+		}
+		switch(token) {
 		case END_ARRAY:
 		case END_OBJECT:
 			return (T)END_VALUE;
@@ -226,70 +251,71 @@ public class JsonBeanDecoder extends JsonCoder {
 			PropertyEditor propertyEditor 
 				= PropertyEditorManager.findEditor(expected);
 			if (propertyEditor != null) {
-				propertyEditor.setAsText(parser.getString());
+				propertyEditor.setAsText(parser.getText());
 				return (T)propertyEditor.getValue();
 			}
 			if (Enum.class.isAssignableFrom(expected)) {
 				@SuppressWarnings("rawtypes")
 				Class<Enum> enumClass = (Class<Enum>)expected;
-				return (T)Enum.valueOf(enumClass, parser.getString());
+				return (T)Enum.valueOf(enumClass, parser.getText());
 			}
 			// fall through
-		case KEY_NAME:
-			return (T)parser.getString();
-		case VALUE_NUMBER:
-			return readNumber(expected);
+		case FIELD_NAME:
+			return (T)parser.getText();
 		case START_ARRAY:
 			if (expected.isArray() 
 					|| Collection.class.isAssignableFrom(expected)
 					|| expected.equals(Object.class)) {
 				return (T)readArrayValue(expected);
 			}
-			throw new JsonDecodeException(parser.getLocation()
+			throw new JsonDecodeException(parser.getCurrentLocation()
 					+ ": Encountered unexpected array.");
 		case START_OBJECT:
 			return readObjectValue(expected);
 		default:
-			throw new JsonDecodeException(parser.getLocation()
+			if (token.isScalarValue()) {
+				return readNumber(expected);
+			}
+			throw new JsonDecodeException(parser.getCurrentLocation()
 					+ ": Unexpected event.");
 		}
 	}
 
 	@SuppressWarnings("unchecked")
-	private <T> T readNumber(Class<T> expected) {
+	private <T> T readNumber(Class<T> expected) throws IOException {
 		if (expected.equals(Byte.class) 
 				|| expected.equals(Byte.TYPE)) {
-			return (T)Byte.valueOf((byte)parser.getInt());
+			return (T)Byte.valueOf((byte)parser.getValueAsInt());
 		}
 		if (expected.equals(Short.class) 
 				|| expected.equals(Short.TYPE)) {
-			return (T)Short.valueOf((short)parser.getInt());
+			return (T)Short.valueOf((short)parser.getValueAsInt());
 		}
 		if (expected.equals(Integer.class) 
 				|| expected.equals(Integer.TYPE)) {
-			return (T)Integer.valueOf(parser.getInt());
+			return (T)Integer.valueOf(parser.getValueAsInt());
 		}
 		if (expected.equals(BigInteger.class)) {
-			return (T)parser.getBigDecimal().toBigInteger();
+			return (T)parser.getBigIntegerValue();
 		}
 		if (expected.equals(BigDecimal.class)) {
-			return (T)parser.getBigDecimal();
+			return (T)parser.getDecimalValue();
 		}
 		if (expected.equals(Float.class)
 				|| expected.equals(Float.TYPE)) {
-			return (T)Float.valueOf(parser.getBigDecimal().floatValue());
+			return (T)Float.valueOf((float)parser.getValueAsDouble());
 		}
 		if (expected.equals(Long.class) 
 				|| expected.equals(Long.TYPE)
-				|| parser.isIntegralNumber()) {
-			return (T)Long.valueOf(parser.getLong());
+				|| parser.currentToken() == JsonToken.VALUE_NUMBER_INT) {
+			return (T)Long.valueOf(parser.getValueAsLong());
 		}
-		return (T)Double.valueOf(parser.getBigDecimal().doubleValue());
+		return (T)Double.valueOf(parser.getValueAsDouble());
 	}
 	
 	@SuppressWarnings("unchecked")
 	private <T> Object readArrayValue(Class<T> arrayType) 
-			throws JsonDecodeException {
+			throws JsonDecodeException, IOException {
 		Collection<T> items = createCollection(arrayType);
 		Class<?> itemType = Object.class;
 		if (arrayType.isArray()) {
@@ -316,14 +342,18 @@ public class JsonBeanDecoder extends JsonCoder {
 	private <T> Collection<T> createCollection(Class<T> arrayType)
 			throws JsonDecodeException {
 		if (!Collection.class.isAssignableFrom(arrayType)) {
-			return new ArrayList<>();
+			@SuppressWarnings("unchecked")
+			Collection<T> result = (Collection<T>)new JsonArray();
+			return result;
 		}
 		if (arrayType.isInterface()) {
 			// This is how things should be: interface type
 			if (Set.class.isAssignableFrom(arrayType)) {
 				return new HashSet<>();
 			}
-			return new ArrayList<>();
+			@SuppressWarnings("unchecked")
+			Collection<T> result = (Collection<T>)new JsonArray();
+			return result;
 		}
 		// Implementation type, we'll try our best
 		try {
@@ -331,40 +361,40 @@ public class JsonBeanDecoder extends JsonCoder {
 			Collection<T> result = (Collection<T>)arrayType.newInstance();
 			return result;
 		} catch (InstantiationException | IllegalAccessException e) {
-			throw new JsonDecodeException(parser.getLocation()
+			throw new JsonDecodeException(parser.getCurrentLocation()
 					+ ": Cannot create " + arrayType.getName(), e);
 		}
 	}
 	
 	private <T> T readObjectValue(Class<T> expected) 
-			throws JsonDecodeException {
-		Event prefetched = parser.next();
-		if (!prefetched.equals(Event.KEY_NAME)
-				&& !prefetched.equals(Event.END_OBJECT)) {
-			throw new JsonDecodeException(parser.getLocation()
+			throws JsonDecodeException, IOException {
+		JsonToken prefetched = parser.nextToken();
+		if (!prefetched.equals(JsonToken.FIELD_NAME)
+				&& !prefetched.equals(JsonToken.END_OBJECT)) {
+			throw new JsonDecodeException(parser.getCurrentLocation()
 					+ ": Unexpected Json event " + prefetched);
 		}
 		Class<?> actualCls = expected;
-		if (prefetched.equals(Event.KEY_NAME)) {
-			String key = parser.getString();		
+		if (prefetched.equals(JsonToken.FIELD_NAME)) {
+			String key = parser.getText();		
 			if ("class".equals(key)) {
 				prefetched = null; // Now it's consumed
-				parser.next();
-				String provided = parser.getString();
+				parser.nextToken();
+				String provided = parser.getText();
 				if (aliases.containsKey(provided)) {
 					actualCls = aliases.get(provided);
 				} else {
-					actualCls = classConverter.apply(provided).orElse(HashMap.class);
+					actualCls = classConverter.apply(provided).orElse(JsonObject.class);
 				}
 			}
 		}
 		if (!expected.isAssignableFrom(actualCls)) {
-			throw new JsonDecodeException(parser.getLocation()
+			throw new JsonDecodeException(parser.getCurrentLocation()
 					+ ": Expected " + expected.getName()
 					+ " found " + actualCls.getName());
 		}
 		if (actualCls.equals(Object.class)) {
-			actualCls = HashMap.class;
+			actualCls = JsonObject.class;
 		}
 		if (Map.class.isAssignableFrom(actualCls)) {
 			@SuppressWarnings("unchecked")
@@ -386,36 +416,36 @@ public class JsonBeanDecoder extends JsonCoder {
 			return (M)mapCls.newInstance();
 		} catch (InstantiationException
 				| IllegalAccessException e) {
-			throw new JsonDecodeException(parser.getLocation()
+			throw new JsonDecodeException(parser.getCurrentLocation()
 					+ ": Cannot create " + mapCls.getName(), e);
 		}
 	}
 	
-	private void objectIntoMap(Map<String,Object> result, Event prefetched)
-			throws JsonDecodeException {
+	private void objectIntoMap(Map<String,Object> result, JsonToken prefetched)
+			throws JsonDecodeException, IOException {
 		whileLoop:
 		while (true) {
-			Event event = prefetched != null ? prefetched : parser.next();
+			JsonToken event = prefetched != null ? prefetched : parser.nextToken();
 			prefetched = null; // Consumed.
 			switch(event) {
 			case END_OBJECT:
 				break whileLoop;
 				
-			case KEY_NAME:
-				String key = parser.getString();
+			case FIELD_NAME:
+				String key = parser.getText();
 				Object value = readValue(Object.class);
 				result.put(key, value);
 				break;
 				
 			default:
-				throw new JsonDecodeException(parser.getLocation()
+				throw new JsonDecodeException(parser.getCurrentLocation()
 						+ ": Unexpected Json event " + event);
 			}
 		}
 	}
 	
-	private <T> T objectToBean(Class<T> beanCls, Event prefetched)
-			throws JsonDecodeException {
+	private <T> T objectToBean(Class<T> beanCls, JsonToken prefetched)
+			throws JsonDecodeException, IOException {
 		Map<String,PropertyDescriptor> beanProps = new HashMap<>();
 		try {
 			BeanInfo beanInfo = Introspector.getBeanInfo(beanCls, Object.class);
@@ -424,7 +454,7 @@ public class JsonBeanDecoder extends JsonCoder {
 				beanProps.put(p.getName(), p);
 			}
 		} catch (IntrospectionException e) {
-			throw new JsonDecodeException(parser.getLocation()
+			throw new JsonDecodeException(parser.getCurrentLocation()
 					+ ": Cannot introspect " + beanCls);
 		}
 		
@@ -438,7 +468,7 @@ public class JsonBeanDecoder extends JsonCoder {
 		for (Map.Entry<String, ?> e: propsMap.entrySet()) {
 			PropertyDescriptor property = beanProps.get(e.getKey());
 			if (property == null) {
-				throw new JsonDecodeException(parser.getLocation()
+				throw new JsonDecodeException(parser.getCurrentLocation()
 						+ ": No bean property for key " + e.getKey());
 			}
 			setProperty(result, property, e.getValue());
@@ -478,28 +508,28 @@ public class JsonBeanDecoder extends JsonCoder {
 			return beanCls.newInstance();
 		} catch (InstantiationException | IllegalAccessException 
 				| IllegalArgumentException | InvocationTargetException e) {
-			throw new JsonDecodeException(parser.getLocation()
+			throw new JsonDecodeException(parser.getCurrentLocation()
 			        + ": Cannot create " + beanCls.getName(), e);
 		}
 	}
 
 	private Map<String, Object> parseProperties(
-	        Map<String, PropertyDescriptor> beanProps, Event prefetched)
-	        throws JsonDecodeException {
+	        Map<String, PropertyDescriptor> beanProps, JsonToken prefetched)
+	        throws JsonDecodeException, IOException {
 		Map<String,Object> map = new HashMap<>();
 		whileLoop:
 		while (true) {
-			Event event = prefetched != null ? prefetched : parser.next();
+			JsonToken event = prefetched != null ? prefetched : parser.nextToken();
 			prefetched = null; // Consumed.
 			switch(event) {
 			case END_OBJECT:
 				break whileLoop;
 				
-			case KEY_NAME:
-				String key = parser.getString();
+			case FIELD_NAME:
+				String key = parser.getText();
 				PropertyDescriptor property = beanProps.get(key);
 				if (property == null) {
-					throw new JsonDecodeException(parser.getLocation()
+					throw new JsonDecodeException(parser.getCurrentLocation()
 							+ ": No bean property for key " + key);
 				}
 				Object value = readValue(property.getPropertyType());
@@ -507,7 +537,7 @@ public class JsonBeanDecoder extends JsonCoder {
 				break;
 				
 			default:
-				throw new JsonDecodeException(parser.getLocation()
+				throw new JsonDecodeException(parser.getCurrentLocation()
 						+ ": Unexpected Json event " + event);
 			}
 		}
@@ -529,7 +559,7 @@ public class JsonBeanDecoder extends JsonCoder {
 			propField.set(obj, value);
 		} catch (IllegalAccessException | IllegalArgumentException
 		        | InvocationTargetException | NoSuchFieldException e) {
-			throw new JsonDecodeException(parser.getLocation()
+			throw new JsonDecodeException(parser.getCurrentLocation()
 					+ ": Cannot write property " + property.getName(), e);
 		}
 	}

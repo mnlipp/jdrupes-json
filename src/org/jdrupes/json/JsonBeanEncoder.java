@@ -1,6 +1,6 @@
 /*
  * This file is part of the JDrupes JSON utilities project.
- * Copyright (C) 2017  Michael N. Lipp
+ * Copyright (C) 2017, 2018  Michael N. Lipp
  *
  * This program is free software; you can redistribute it and/or modify it 
  * under the terms of the GNU Lesser General Public License as published
@@ -17,6 +17,8 @@
  */
 
 package org.jdrupes.json;
+
+import com.fasterxml.jackson.core.JsonGenerator;
 
 import java.beans.BeanInfo;
 import java.beans.IntrospectionException;
@@ -39,9 +41,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-
-import javax.json.Json;
-import javax.json.stream.JsonGenerator;
 
 /**
  * Encoder for converting a Java object graph to JSON. Objects may be arrays,
@@ -185,7 +184,11 @@ public class JsonBeanEncoder extends JsonCoder
 	 * @return the encoder
 	 */
 	public static JsonBeanEncoder create(Writer out) {
-		return new JsonBeanEncoder(Json.createGenerator(out));
+		try {
+			return new JsonBeanEncoder(defaultFactory().createGenerator(out));
+		} catch (IOException e) {
+			throw new IllegalArgumentException();
+		}
 	}
 
 	/**
@@ -211,7 +214,11 @@ public class JsonBeanEncoder extends JsonCoder
 
 	private JsonBeanEncoder() {
 		writer = new StringWriter();
-		gen = Json.createGenerator(writer);
+		try {
+			gen = defaultFactory().createGenerator(writer);
+		} catch (IOException e) {
+			throw new IllegalArgumentException();
+		}
 	}
 
 	private JsonBeanEncoder(JsonGenerator generator) {
@@ -239,62 +246,67 @@ public class JsonBeanEncoder extends JsonCoder
 			throw new IllegalStateException(
 					"JsonBeanEncoder has been created without a known writer.");
 		}
-		gen.flush();
+		try {
+			gen.flush();
+		} catch (IOException e) {
+			throw new IllegalStateException(e);
+		}
 		return writer.toString();
 	}
 	
-	public JsonBeanEncoder writeArray(Object... items) {
+	public JsonBeanEncoder writeArray(Object... items) throws IOException {
 		doWriteObject(items, items.getClass());
 		return this;
 	}
 	
-	public JsonBeanEncoder writeObject(Object obj) {
+	public JsonBeanEncoder writeObject(Object obj) throws IOException {
 		doWriteObject(obj, obj.getClass());
 		return this;
 	}
 	
-	private void doWriteObject(Object obj, Class<?> expectedType) {
+	private void doWriteObject(Object obj, Class<?> expectedType)
+		throws IOException {
 		if (obj == null) {
 			gen.writeNull();
 			return;
 		}
 		if (obj instanceof Boolean) {
-			gen.write((Boolean)obj);
+			gen.writeBoolean((Boolean)obj);
 			return;
 		} 
 		if (obj instanceof Byte) {
-			gen.write(((Byte)obj).intValue());
+			gen.writeNumber(((Byte)obj).intValue());
 			return;
 		} 
 		if (obj instanceof Number) {
 			if (obj instanceof Short) {
-				gen.write((Short)obj);
+				gen.writeNumber((Short)obj);
 				return;
 			}
 			if (obj instanceof Integer) {
-				gen.write((Integer)obj);
+				gen.writeNumber((Integer)obj);
 				return;
 			}
 			if (obj instanceof Long) {
-				gen.write((Long)obj);
+				gen.writeNumber((Long)obj);
 				return;
 			}
 			if (obj instanceof BigInteger) {
-				gen.write((BigInteger)obj);
+				gen.writeNumber((BigInteger)obj);
 				return;
 			}
 			if (obj instanceof BigDecimal) {
-				gen.write((BigDecimal)obj);
+				gen.writeNumber((BigDecimal)obj);
 				return;
 			}
-			gen.write((Double)obj);
+			gen.writeNumber((Double)obj);
 			return;
 		}
 		PropertyEditor propertyEditor = PropertyEditorManager
 		        .findEditor(obj.getClass());
 		if (propertyEditor != null) {
 			propertyEditor.setValue(obj);
-			gen.write(propertyEditor.getAsText());
+			gen.writeString(propertyEditor.getAsText());
 			return;
 		}
 		if (obj instanceof Object[]) {
@@ -306,7 +318,7 @@ public class JsonBeanEncoder extends JsonCoder
 			for (Object item: (Object[])obj) {
 				doWriteObject(item, compType);
 			}
-			gen.writeEnd();
+			gen.writeEndArray();;
 			return;
 		}
 		if (obj instanceof Collection) {
@@ -314,7 +326,7 @@ public class JsonBeanEncoder extends JsonCoder
 			for (Object item: (Collection<?>)obj) {
 				doWriteObject(item, null);
 			}
-			gen.writeEnd();
+			gen.writeEndArray();
 			return;
 		}
 		if (obj instanceof Map) {
@@ -322,10 +334,10 @@ public class JsonBeanEncoder extends JsonCoder
 			Map<String,Object> map = (Map<String,Object>)obj;
 			gen.writeStartObject();
 			for (Map.Entry<String, Object> e: map.entrySet()) {
-				gen.writeKey(e.getKey());
+				gen.writeFieldName(e.getKey());
 				doWriteObject(e.getValue(), null);
 			}
-			gen.writeEnd();
+			gen.writeEndObject();
 			return;
 		}
 		try {
@@ -334,7 +346,7 @@ public class JsonBeanEncoder extends JsonCoder
 			if (beanInfo.getPropertyDescriptors().length > 0) {
 				gen.writeStartObject();
 				if (!obj.getClass().equals(expectedType)) {
-					gen.write("class", aliases.computeIfAbsent(
+					gen.writeStringField("class", aliases.computeIfAbsent(
 							obj.getClass(), k -> k.getName()));
 				}
 				for (PropertyDescriptor propDesc: 
@@ -351,7 +363,7 @@ public class JsonBeanEncoder extends JsonCoder
 					}
 					try {
 						Object value = method.invoke(obj);
-						gen.writeKey(propDesc.getName());
+						gen.writeFieldName(propDesc.getName());
 						doWriteObject(value, propDesc.getPropertyType());
 						continue;
 					} catch (IllegalAccessException | IllegalArgumentException
@@ -359,14 +371,14 @@ public class JsonBeanEncoder extends JsonCoder
 						// Bad luck
 					}
 				}
-				gen.writeEnd();
+				gen.writeEndObject();
 				return;
 			}
 		} catch (IntrospectionException e) {
 			// No luck
 		}
 		// Last resort
-		gen.write(obj.toString());
+		gen.writeString(obj.toString());
 	}
 	
 }

@@ -9,11 +9,9 @@ JDrupes JSON library
 [![Maven Central](https://img.shields.io/maven-central/v/org.jdrupes.json/json.svg)](http://search.maven.org/#search%7Cga%7C1%7Cg%3A%22org.jdrupes.json%22)
 [![Javadocs](https://www.javadoc.io/badge/org.jdrupes.json/json.svg)](https://www.javadoc.io/doc/org.jdrupes.json/json)
 
-The goal of this package is to provide an OSGi compliant utility library for 
-working with the JSON API as defined in 
-[JSR 374](https://jcp.org/en/jsr/detail?id=374).
-
-Currently, the library provides an encoder and decoder for Java Beans.
+The goal of this package is to provide a JSON encoder and decoder for Java Beans 
+as an OSGi compliant utility library using the 
+[Jackson core library](https://github.com/FasterXML/jackson-core).
 
 This library requires Java 8 SE. Binaries are currently made
 available at maven central.
