@@ -81,7 +81,7 @@ public interface JsonRpc extends JsonObject {
 		@SuppressWarnings("unchecked")
 		@Override
 		public JsonArray params() {
-			Object values = get("params");
+			Object values = computeIfAbsent("params", key -> JsonArray.create());
 			if (values instanceof JsonArray) {
 				return (JsonArray) values;
 			}
