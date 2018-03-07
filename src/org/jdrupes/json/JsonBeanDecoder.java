@@ -23,11 +23,8 @@ import com.fasterxml.jackson.core.JsonToken;
 
 import java.beans.BeanInfo;
 import java.beans.ConstructorProperties;
-import java.beans.IntrospectionException;
-import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
 import java.beans.PropertyEditor;
-import java.beans.PropertyEditorManager;
 import java.io.IOException;
 import java.io.Reader;
 import java.lang.reflect.Array;
@@ -254,8 +251,7 @@ public class JsonBeanDecoder extends JsonCodec {
 		case VALUE_TRUE:
 			return (T)Boolean.TRUE;
 		case VALUE_STRING:
-			PropertyEditor propertyEditor 
-				= PropertyEditorManager.findEditor(expected);
+			PropertyEditor propertyEditor = findPropertyEditor(expected);
 			if (propertyEditor != null) {
 				propertyEditor.setAsText(parser.getText());
 				return (T)propertyEditor.getValue();
@@ -453,15 +449,14 @@ public class JsonBeanDecoder extends JsonCodec {
 	private <T> T objectToBean(Class<T> beanCls, JsonToken prefetched)
 			throws JsonDecodeException, IOException {
 		Map<String,PropertyDescriptor> beanProps = new HashMap<>();
-		try {
-			BeanInfo beanInfo = Introspector.getBeanInfo(beanCls, Object.class);
-			for (PropertyDescriptor 
-					p: beanInfo.getPropertyDescriptors()) {
-				beanProps.put(p.getName(), p);
-			}
-		} catch (IntrospectionException e) {
+		BeanInfo beanInfo = findBeanInfo(beanCls);
+		if (beanInfo == null) {
 			throw new JsonDecodeException(parser.getCurrentLocation()
 					+ ": Cannot introspect " + beanCls);
+		}
+		for (PropertyDescriptor 
+				p: beanInfo.getPropertyDescriptors()) {
+			beanProps.put(p.getName(), p);
 		}
 		
 		// Get properties as map first.

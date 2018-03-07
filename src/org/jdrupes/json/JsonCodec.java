@@ -20,6 +20,15 @@ package org.jdrupes.json;
 
 import com.fasterxml.jackson.core.JsonFactory;
 
+import java.beans.BeanInfo;
+import java.beans.IntrospectionException;
+import java.beans.Introspector;
+import java.beans.PropertyEditor;
+import java.beans.PropertyEditorManager;
+import java.util.Collections;
+import java.util.Map;
+import java.util.WeakHashMap;
+
 /**
  * The base class for the {@link JsonBeanEncoder} and {@link JsonBeanDecoder}.
  */
@@ -29,6 +38,40 @@ public abstract class JsonCodec {
 	
 	protected static JsonFactory defaultFactory() {
 		return defaultFactory;
+	}
+
+	private static final Map<Class<?>,PropertyEditor> propertyEditorCache
+		= Collections.synchronizedMap(new WeakHashMap<>());
+	
+	protected static PropertyEditor findPropertyEditor(Class<?> cls) {
+		PropertyEditor propertyEditor = propertyEditorCache.get(cls);
+		if (propertyEditor == null && !propertyEditorCache.containsKey(cls)) {
+			// Never looked for before.
+			propertyEditor = PropertyEditorManager.findEditor(cls);
+			propertyEditorCache.put(cls, propertyEditor);
+		}
+		return propertyEditor;
+	}
+	
+	private static final Map<Class<?>,BeanInfo> beanInfoCache
+		= Collections.synchronizedMap(new WeakHashMap<>());
+
+	protected static BeanInfo findBeanInfo(Class<?> cls) {
+		BeanInfo beanInfo = beanInfoCache.get(cls);
+		if (beanInfo == null && !beanInfoCache.containsKey(cls)) {
+			try {
+				beanInfo = Introspector.getBeanInfo(cls, Object.class);
+			} catch (IntrospectionException e) {
+				// Bad luck
+			}
+			beanInfoCache.put(cls, beanInfo);
+		}
+		return beanInfo;
+	}
+	
+	public static void clearCaches() {
+		propertyEditorCache.clear();
+		beanInfoCache.clear();
 	}
 	
 	/**
