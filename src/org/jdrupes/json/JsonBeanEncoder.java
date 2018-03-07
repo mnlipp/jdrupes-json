@@ -37,10 +37,12 @@ import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.WeakHashMap;
 
 /**
  * Encoder for converting a Java object graph to JSON. Objects may be arrays,
@@ -148,6 +150,11 @@ public class JsonBeanEncoder extends JsonCodec
 		// See https://issues.apache.org/jira/browse/GROOVY-8284
 		EXCLUDED_DEFAULT.add("groovy.lang.MetaClass");
 	}
+
+	private static final Map<Class<?>,PropertyEditor> propertyEditorCache
+		= Collections.synchronizedMap(new WeakHashMap<>());
+	private static final Map<Class<?>,BeanInfo> beanInfoCache
+		= Collections.synchronizedMap(new WeakHashMap<>());
 
 	private Map<Class<?>, String> aliases = new HashMap<>();
 	private Set<String> excluded = EXCLUDED_DEFAULT;
@@ -302,8 +309,12 @@ public class JsonBeanEncoder extends JsonCodec
 			gen.writeNumber((Double)obj);
 			return;
 		}
-		PropertyEditor propertyEditor = PropertyEditorManager
-		        .findEditor(obj.getClass());
+		PropertyEditor propertyEditor = propertyEditorCache.get(obj.getClass());
+		if (propertyEditor == null && !propertyEditorCache.containsKey(obj.getClass())) {
+			// Never looked for before.
+			propertyEditor = PropertyEditorManager.findEditor(obj.getClass());
+			propertyEditorCache.put(obj.getClass(), propertyEditor);
+		}
 		if (propertyEditor != null) {
 			propertyEditor.setValue(obj);
 			gen.writeString(propertyEditor.getAsText());
@@ -340,42 +351,44 @@ public class JsonBeanEncoder extends JsonCodec
 			gen.writeEndObject();
 			return;
 		}
-		try {
-			BeanInfo beanInfo = Introspector.getBeanInfo(
-					obj.getClass(), Object.class);
-			if (beanInfo.getPropertyDescriptors().length > 0) {
-				gen.writeStartObject();
-				if (!obj.getClass().equals(expectedType)) {
-					gen.writeStringField("class", aliases.computeIfAbsent(
-							obj.getClass(), k -> k.getName()));
-				}
-				for (PropertyDescriptor propDesc: 
-						beanInfo.getPropertyDescriptors()) {
-					if (propDesc.getValue("transient") != null) {
-						continue;
-					}
-					if (excluded.contains(propDesc.getPropertyType().getName())) {
-						continue;
-					}
-					Method method = propDesc.getReadMethod();
-					if (method == null) {
-						continue;
-					}
-					try {
-						Object value = method.invoke(obj);
-						gen.writeFieldName(propDesc.getName());
-						doWriteObject(value, propDesc.getPropertyType());
-						continue;
-					} catch (IllegalAccessException | IllegalArgumentException
-					        | InvocationTargetException e) {
-						// Bad luck
-					}
-				}
-				gen.writeEndObject();
-				return;
+		BeanInfo beanInfo = beanInfoCache.get(obj.getClass());
+		if (beanInfo == null && !beanInfoCache.containsKey(obj.getClass())) {
+			try {
+				beanInfo = Introspector.getBeanInfo(obj.getClass(), Object.class);
+			} catch (IntrospectionException e) {
+				// Bad luck
 			}
-		} catch (IntrospectionException e) {
-			// No luck
+			beanInfoCache.put(obj.getClass(), beanInfo);
+		}
+		if (beanInfo != null && beanInfo.getPropertyDescriptors().length > 0) {
+			gen.writeStartObject();
+			if (!obj.getClass().equals(expectedType)) {
+				gen.writeStringField("class", aliases.computeIfAbsent(
+						obj.getClass(), k -> k.getName()));
+			}
+			for (PropertyDescriptor propDesc : beanInfo.getPropertyDescriptors()) {
+				if (propDesc.getValue("transient") != null) {
+					continue;
+				}
+				if (excluded.contains(propDesc.getPropertyType().getName())) {
+					continue;
+				}
+				Method method = propDesc.getReadMethod();
+				if (method == null) {
+					continue;
+				}
+				try {
+					Object value = method.invoke(obj);
+					gen.writeFieldName(propDesc.getName());
+					doWriteObject(value, propDesc.getPropertyType());
+					continue;
+				} catch (IllegalAccessException | IllegalArgumentException 
+						| InvocationTargetException e) {
+					// Bad luck
+				}
+			}
+			gen.writeEndObject();
+			return;
 		}
 		// Last resort
 		gen.writeString(obj.toString());
