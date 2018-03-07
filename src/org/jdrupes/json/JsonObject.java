@@ -20,6 +20,7 @@ package org.jdrupes.json;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * A view on `Map<String,Object>` that provides some utility methods
@@ -58,6 +59,8 @@ public interface JsonObject {
 	}
 
 	Map<String,Object> backing();
+
+	Set<String> fields();
 	
 	Object get(String field);
 	
@@ -89,6 +92,14 @@ public interface JsonObject {
 		@Override
 		public Map<String,Object> backing() {
 			return this;
+		}
+
+		/* (non-Javadoc)
+		 * @see org.jdrupes.json.JsonObject#fields()
+		 */
+		@Override
+		public Set<String> fields() {
+			return keySet();
 		}
 
 		@Override
@@ -147,6 +158,14 @@ public interface JsonObject {
 		@Override
 		public Map<String, Object> backing() {
 			return backing;
+		}
+
+		/* (non-Javadoc)
+		 * @see org.jdrupes.json.JsonObject#fields()
+		 */
+		@Override
+		public Set<String> fields() {
+			return backing.keySet();
 		}
 
 		@Override

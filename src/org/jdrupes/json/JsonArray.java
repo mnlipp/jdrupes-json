@@ -34,7 +34,7 @@ public interface JsonArray  {
 	/**
 	 * Creates a new instance of the {@link DefaultJsonArray}.
 	 * 
-	 * @return
+	 * @return the json array
 	 */
 	public static JsonArray create() {
 		return new DefaultJsonArray();
@@ -62,6 +62,8 @@ public interface JsonArray  {
 	}
 
 	List<Object> backing();
+	
+	int size();
 	
 	/**
 	 * Streams the elements in the array.
@@ -222,6 +224,14 @@ public interface JsonArray  {
 			return backing;
 		}
 		
+		/* (non-Javadoc)
+		 * @see org.jdrupes.json.JsonArray#size()
+		 */
+		@Override
+		public int size() {
+			return backing.size();
+		}
+
 		/* (non-Javadoc)
 		 * @see org.jdrupes.json.JsonArray#stream()
 		 */
