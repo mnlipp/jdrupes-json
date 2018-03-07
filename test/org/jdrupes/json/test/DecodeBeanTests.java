@@ -24,6 +24,7 @@ import java.util.Map;
 
 import org.jdrupes.json.JsonBeanDecoder;
 import org.jdrupes.json.JsonDecodeException;
+import org.jdrupes.json.JsonObject;
 
 import static org.junit.Assert.*;
 
@@ -107,7 +108,7 @@ public class DecodeBeanTests {
 		String json = "{\"age\":42,\"name\":\"Simon Sample\",\""
 				+ "numbers\":[{\"name\":\"Home\",\"number\":\"06751 51 56 57\"},"
 				+ "{\"class\":\"SpecialNumber\",\"name\":\"Work\",\"number\":\"030 77 35 44\"}]}";
-		Map<String,?> result = JsonBeanDecoder.create(json)
+		JsonObject result = JsonBeanDecoder.create(json)
 				.addAlias(SpecialNumber.class, "SpecialNumber")
 				.readObject();
 		assertNotEquals(null, result);

@@ -1,7 +1,7 @@
 package org.jdrupes.json.test;
 
 import org.jdrupes.json.JsonBeanEncoder
-import org.jdrupes.json.JsonRpcObject
+import org.jdrupes.json.JsonRpc
 
 import groovy.transform.InheritConstructors
 import spock.lang.*
@@ -125,7 +125,7 @@ class SimpleEncoderTests extends Specification {
 	
 	void "RPC Test"() {
 		setup: "Prepare RPC"
-		JsonRpcObject rpc = new JsonRpcObject();
+		JsonRpc rpc = JsonRpc.create();
 		rpc.setMethod("test");
 		rpc.addParam("param1");
 		rpc.addParam(42);

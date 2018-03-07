@@ -3,7 +3,7 @@ package org.jdrupes.json.test;
 import org.jdrupes.json.JsonBeanDecoder
 import org.jdrupes.json.JsonBeanEncoder
 import org.jdrupes.json.JsonRpc
-import org.jdrupes.json.JsonRpcObject
+import org.jdrupes.json.JsonRpc.DefaultJsonRpc
 import org.jdrupes.json.test.SimpleEncoderTests.PhoneNumber
 
 import spock.lang.*
@@ -55,7 +55,7 @@ class SimpleDecoderTests extends Specification {
 		String json = '{"method":"test","params":["param1",42],"jsonrpc":"2.0"}'
 		
 		when:
-		JsonRpc rpc = JsonBeanDecoder.create(json).readObject(JsonRpcObject.class)
+		JsonRpc rpc = JsonBeanDecoder.create(json).readObject(DefaultJsonRpc.class)
 
 		then:
 		rpc.method() == "test"

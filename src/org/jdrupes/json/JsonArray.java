@@ -24,79 +24,299 @@ import java.util.List;
 import java.util.stream.Stream;
 
 /**
- * A "wrapper" class for `List<Object>` that provides some utility methods
+ * A view on a `List<Object>` that provides some utility methods
  * for accessing the data.
- * 
- * Instances of this class are used as default representations for JSON
- * arrays.
  */
-public class JsonArray extends ArrayList<Object> {
+public interface JsonArray  {
 	
-	private static final long serialVersionUID = 2997178412748739135L;
-	
-	public static final JsonArray EMPTY_ARRAY 
-		= fromData(Collections.emptyList());
-	
-	public JsonArray() {
+	JsonArray EMPTY_ARRAY = from(Collections.emptyList());
+
+	/**
+	 * Creates a new instance of the {@link DefaultJsonArray}.
+	 * 
+	 * @return
+	 */
+	public static JsonArray create() {
+		return new DefaultJsonArray();
 	}
 
-	private JsonArray(List<Object>data) {
-		super(data != null ? data : Collections.emptyList());
+	/**
+	 * Creates a wrapper around an existing `List<Object>`.
+	 *
+	 * @param backing the backing list
+	 * @return the json array
+	 */
+	public static JsonArray from(List<Object> backing) {
+		return new JsonArrayWrapper(backing);
 	}
 
-	public static JsonArray fromData(List<Object> data) {
-		return new JsonArray(data);
+	/**
+	 * Overloaded to ensure that an existing {@link DefaultJsonArray}
+	 * is not wrapped again.
+	 * 
+	 * @param backing the backing list
+	 * @return the argument
+	 */
+	public static JsonArray from(DefaultJsonArray backing) {
+		return backing;
 	}
+
+	List<Object> backing();
 	
-	public static JsonArray fromData(JsonArray data) {
-		return data;
-	}
+	/**
+	 * Streams the elements in the array.
+	 *
+	 * @return the stream
+	 */
+	Stream<Object> stream();
 	
-	@SuppressWarnings("unchecked")
-	public Stream<JsonArray> arrayStream() {
-		return stream().map(
-				obj -> new JsonArray((List<Object>)obj));
-	}
+	/**
+	 * Streams the elements in the array after casting them to 
+	 * {@link JsonArray}s. Useful for processing arrays of arrays.
+	 *
+	 * @return the stream
+	 */
+	Stream<JsonArray> arrayStream();
+
+	JsonArray append(Object value);
+
+	Object get(int index);
 	
-	public JsonArray append(Object value) {
-		add(value);
-		return this;
-	}
+	String asString(int index);
+
+	int asInt(int index);
+
+	long asLong(int index);
+
+	boolean asBoolean(int index);
+
+	float asFloat(int index);
+
+	double asDouble(int index);
+
+	JsonArray asArray(int index);
 	
-	public String asString(int index) {
-		return (String)get(index);
-	}
-	
-	public int asInt(int index) {
-		return ((Number)get(index)).intValue();
-	}
-	
-	public long asLong(int index) {
-		return ((Number)get(index)).longValue();
-	}
-	
-	public boolean asBoolean(int index) {
-		return (Boolean)get(index);
-	}
-	
-	public float asFloat(int index) {
-		return ((Number)get(index)).floatValue();
-	}
-	
-	public double asDouble(int index) {
-		return ((Number)get(index)).doubleValue();
-	}
-	
-	@SuppressWarnings("unchecked")
-	public JsonArray asArray(int index) {
-		Object value = get(index);
-		if (value instanceof JsonArray) {
-			return (JsonArray) value;
+	/**
+	 * Instances of this class are used as default representations for JSON
+	 * arrays.
+	 */
+	public static class DefaultJsonArray extends ArrayList<Object> implements JsonArray {
+
+		private static final long serialVersionUID = 2997178412748739135L;
+		
+		public DefaultJsonArray() {
 		}
-		if (value instanceof List) {
-			return fromData((List<Object>) value);			
+
+		@Override
+		public List<Object> backing() {
+			return this;
 		}
-		throw new IllegalStateException("Not an array.");
+		
+		/* (non-Javadoc)
+		 * @see org.jdrupes.json.JsonArray#stream()
+		 */
+		@Override
+		public Stream<Object> stream() {
+			return super.stream();
+		}
+
+		/* (non-Javadoc)
+		 * @see org.jdrupes.json.JsonArrayItf#arrayStream()
+		 */
+		@Override
+		@SuppressWarnings("unchecked")
+		public Stream<JsonArray> arrayStream() {
+			return stream().map(
+					obj -> JsonArray.from((List<Object>)obj));
+		}
+		
+		/* (non-Javadoc)
+		 * @see org.jdrupes.json.JsonArrayItf#append(java.lang.Object)
+		 */
+		@Override
+		public JsonArray append(Object value) {
+			add(value);
+			return this;
+		}
+		
+		/* (non-Javadoc)
+		 * @see org.jdrupes.json.JsonArrayItf#asString(int)
+		 */
+		@Override
+		public String asString(int index) {
+			return (String)get(index);
+		}
+		
+		/* (non-Javadoc)
+		 * @see org.jdrupes.json.JsonArrayItf#asInt(int)
+		 */
+		@Override
+		public int asInt(int index) {
+			return ((Number)get(index)).intValue();
+		}
+		
+		/* (non-Javadoc)
+		 * @see org.jdrupes.json.JsonArrayItf#asLong(int)
+		 */
+		@Override
+		public long asLong(int index) {
+			return ((Number)get(index)).longValue();
+		}
+		
+		/* (non-Javadoc)
+		 * @see org.jdrupes.json.JsonArrayItf#asBoolean(int)
+		 */
+		@Override
+		public boolean asBoolean(int index) {
+			return (Boolean)get(index);
+		}
+		
+		/* (non-Javadoc)
+		 * @see org.jdrupes.json.JsonArrayItf#asFloat(int)
+		 */
+		@Override
+		public float asFloat(int index) {
+			return ((Number)get(index)).floatValue();
+		}
+		
+		/* (non-Javadoc)
+		 * @see org.jdrupes.json.JsonArrayItf#asDouble(int)
+		 */
+		@Override
+		public double asDouble(int index) {
+			return ((Number)get(index)).doubleValue();
+		}
+		
+		/* (non-Javadoc)
+		 * @see org.jdrupes.json.JsonArrayItf#asArray(int)
+		 */
+		@Override
+		@SuppressWarnings("unchecked")
+		public JsonArray asArray(int index) {
+			Object value = get(index);
+			if (value instanceof JsonArray) {
+				return (JsonArray) value;
+			}
+			if (value instanceof List) {
+				return JsonArray.from((List<Object>) value);			
+			}
+			throw new IllegalStateException("Not an array.");
+		}
+
 	}
 	
+	/**
+	 * Instances of this class are used as default representations for JSON
+	 * arrays.
+	 */
+	public static class JsonArrayWrapper implements JsonArray {
+
+		private List<Object> backing;
+		
+		private JsonArrayWrapper(List<Object> backing) {
+			this.backing = backing;
+		}
+
+		@Override
+		public List<Object> backing() {
+			return backing;
+		}
+		
+		/* (non-Javadoc)
+		 * @see org.jdrupes.json.JsonArray#stream()
+		 */
+		@Override
+		public Stream<Object> stream() {
+			return backing.stream();
+		}
+
+		/* (non-Javadoc)
+		 * @see org.jdrupes.json.JsonArrayItf#arrayStream()
+		 */
+		@Override
+		@SuppressWarnings("unchecked")
+		public Stream<JsonArray> arrayStream() {
+			return backing.stream().map(
+					obj -> JsonArray.from((List<Object>)obj));
+		}
+		
+		/* (non-Javadoc)
+		 * @see org.jdrupes.json.JsonArrayItf#append(java.lang.Object)
+		 */
+		@Override
+		public JsonArray append(Object value) {
+			backing.add(value);
+			return this;
+		}
+		
+		@Override
+		public Object get(int index) {
+			return backing.get(index);
+		}
+
+		/* (non-Javadoc)
+		 * @see org.jdrupes.json.JsonArrayItf#asString(int)
+		 */
+		@Override
+		public String asString(int index) {
+			return (String)backing.get(index);
+		}
+		
+		/* (non-Javadoc)
+		 * @see org.jdrupes.json.JsonArrayItf#asInt(int)
+		 */
+		@Override
+		public int asInt(int index) {
+			return ((Number)backing.get(index)).intValue();
+		}
+		
+		/* (non-Javadoc)
+		 * @see org.jdrupes.json.JsonArrayItf#asLong(int)
+		 */
+		@Override
+		public long asLong(int index) {
+			return ((Number)backing.get(index)).longValue();
+		}
+		
+		/* (non-Javadoc)
+		 * @see org.jdrupes.json.JsonArrayItf#asBoolean(int)
+		 */
+		@Override
+		public boolean asBoolean(int index) {
+			return (Boolean)backing.get(index);
+		}
+		
+		/* (non-Javadoc)
+		 * @see org.jdrupes.json.JsonArrayItf#asFloat(int)
+		 */
+		@Override
+		public float asFloat(int index) {
+			return ((Number)backing.get(index)).floatValue();
+		}
+		
+		/* (non-Javadoc)
+		 * @see org.jdrupes.json.JsonArrayItf#asDouble(int)
+		 */
+		@Override
+		public double asDouble(int index) {
+			return ((Number)backing.get(index)).doubleValue();
+		}
+		
+		/* (non-Javadoc)
+		 * @see org.jdrupes.json.JsonArrayItf#asArray(int)
+		 */
+		@Override
+		@SuppressWarnings("unchecked")
+		public JsonArray asArray(int index) {
+			Object value = backing.get(index);
+			if (value instanceof JsonArray) {
+				return (JsonArray) value;
+			}
+			if (value instanceof List) {
+				return JsonArray.from((List<Object>) value);			
+			}
+			throw new IllegalStateException("Not an array.");
+		}
+
+	}
 }

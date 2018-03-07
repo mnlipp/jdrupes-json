@@ -23,7 +23,7 @@ import com.fasterxml.jackson.core.JsonFactory;
 /**
  * The base class for the {@link JsonBeanEncoder} and {@link JsonBeanDecoder}.
  */
-public abstract class JsonCoder {
+public abstract class JsonCodec {
 
 	private static JsonFactory defaultFactory = new JsonFactory();
 	
@@ -39,6 +39,6 @@ public abstract class JsonCoder {
 	 * @param alias the alias
 	 * @return the object for easy chaining
 	 */
-	public abstract JsonCoder addAlias(Class<?> clazz, String alias);
+	public abstract JsonCodec addAlias(Class<?> clazz, String alias);
 	
 }

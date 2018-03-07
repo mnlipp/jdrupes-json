@@ -22,52 +22,175 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * A "wrapper" class for `Map<String,Object>` that provides some utility methods
+ * A view on `Map<String,Object>` that provides some utility methods
  * for accessing the data.
- * 
- * Instances of this class are used as default representations for JSON
- * objects.
  */
-public class JsonObject extends HashMap<String, Object> {
+public interface JsonObject {
 
-	private static final long serialVersionUID = -9115687652764559620L;
+	/**
+	 * Creates a new instabnce of the {@link DefaultJsonObject}.
+	 *
+	 * @return the json object
+	 */
+	public static JsonObject create() {
+		return new DefaultJsonObject();
+	}
+	
+	/**
+	 * Creates a wrapper around an existing `Map<String,Object>`.
+	 *
+	 * @param backing the backing map
+	 * @return the json object
+	 */
+	public static JsonObject from(Map<String, Object> backing) {
+		return new JsonObjectWrapper(backing);
+	}
+	
+	/**
+	 * Overloaded to ensure that an existing {@link DefaultJsonObject}
+	 * is not wrapped again.
+	 * 
+	 * @param backing the backing object
+	 * @return the argument
+	 */
+	public static JsonObject from(JsonObject backing) {
+		return backing;
+	}
 
-	public JsonObject() {
-	}
+	Map<String,Object> backing();
+	
+	Object get(String field);
+	
+	JsonObject setField(String field, Object value);
+	
+	String asString(String field);
+	
+	int asInt(String field);
+	
+	long asLong(String field);
+	
+	boolean asBoolean(String field);
+	
+	float asFloat(String field);
+	
+	double asDouble(String field);
 
-	private JsonObject(Map<String, Object> data) {
-		super(data);
-	}
+	/**
+	 * Instances of this class are used as default representations for JSON
+	 * objects.
+	 */
+	public static class DefaultJsonObject extends HashMap<String, Object>
+		implements JsonObject {
+		private static final long serialVersionUID = -9115687652764559620L;
 
-	public static JsonObject fromData(Map<String, Object> data) {
-		return new JsonObject(data);
+		public DefaultJsonObject() {
+		}
+
+		@Override
+		public Map<String,Object> backing() {
+			return this;
+		}
+
+		@Override
+		public Object get(String field) {
+			return super.get(field);
+		}
+
+		/* (non-Javadoc)
+		 * @see org.jdrupes.json.JsonObject#setField(java.lang.String, java.lang.Object)
+		 */
+		@Override
+		public JsonObject setField(String field, Object value) {
+			put(field, value);
+			return this;
+		}
+
+		@Override
+		public String asString(String field) {
+			return (String) get(field);
+		}
+
+		@Override
+		public int asInt(String field) {
+			return (Integer) get(field);
+		}
+
+		@Override
+		public long asLong(String field) {
+			return (Long) get(field);
+		}
+
+		@Override
+		public boolean asBoolean(String field) {
+			return (Boolean) get(field);
+		}
+
+		@Override
+		public float asFloat(String field) {
+			return (Float) get(field);
+		}
+
+		@Override
+		public double asDouble(String field) {
+			return (Double) get(field);
+		}
 	}
 	
-	public static JsonObject fromData(JsonObject data) {
-		return data;
-	}
-	
-	public String asString(String field) {
-		return (String)get(field);
-	}
-	
-	public int asInt(String field) {
-		return (Integer)get(field);
-	}
-	
-	public long asLong(String field) {
-		return (Long)get(field);
-	}
-	
-	public boolean asBoolean(String field) {
-		return (Boolean)get(field);
-	}
-	
-	public float asFloat(String field) {
-		return (Float)get(field);
-	}
-	
-	public double asDouble(String field) {
-		return (Double)get(field);
+	public static class JsonObjectWrapper implements JsonObject {
+
+		private Map<String, Object> backing;
+
+		private JsonObjectWrapper(Map<String, Object> backing) {
+			this.backing = backing;
+		}
+
+		@Override
+		public Map<String, Object> backing() {
+			return backing;
+		}
+
+		@Override
+		public Object get(String field) {
+			return backing.get(field);
+		}
+
+		/* (non-Javadoc)
+		 * @see org.jdrupes.json.JsonObject#setField(java.lang.String, java.lang.Object)
+		 */
+		@Override
+		public JsonObject setField(String field, Object value) {
+			backing.put(field, value);
+			return this;
+		}
+
+		@Override
+		public String asString(String field) {
+			return (String)backing.get(field);
+		}
+
+		@Override
+		public int asInt(String field) {
+			return (Integer)backing.get(field);
+		}
+
+		@Override
+		public long asLong(String field) {
+			return (Long)backing.get(field);
+		}
+
+		@Override
+		public boolean asBoolean(String field) {
+			return (Boolean)backing.get(field);
+		}
+
+		@Override
+		public float asFloat(String field) {
+			return (Float)backing.get(field);
+		}
+
+		@Override
+		public double asDouble(String field) {
+			return (Double)backing.get(field);
+		}
 	}
 }

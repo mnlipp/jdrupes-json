@@ -50,24 +50,30 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.function.Function;
 
+import org.jdrupes.json.JsonArray.DefaultJsonArray;
+import org.jdrupes.json.JsonObject.DefaultJsonObject;
+
 /**
  * Decoder for converting JSON to a Java object graph. The decoding
  * is based on the expected type passed to the decode method.
  * 
  * The convertion rules are as follows:
  *  * If the expected type is {@link Object} and the JSON input
- *    is an array, the JSON array is
- *    converted to an {@link ArrayList} with element type {@link Object}.
+ *    is an array, the JSON array is converted to a {@link DefaultJsonArray},
+ *    which is an {@link ArrayList} with element type {@link Object} and
+ *    some helpful accessor methods.
  *  * If the expected type implements {@link Collection} 
  *    a container of the expected type is created. Its element type
- *    is also {@link Object}. The JSON input must be an array.
+ *    is again {@link Object}. The JSON input must be an array.
  *  * If the expected type is an array type, an array of the expected 
  *    type with the given element type is created. The JSON input must
  *    be an array.
  *  * In all cases above, the element type is passed 
  *    as expected type when decoding the members of the JSON array.
  *  * If the expected type is an {@link Object} and the JSON input
- *    is a JSON object, the input is converted to a {@link JsonObject}.
+ *    is a JSON object, the input is converted to a 
+ *    {@link DefaultJsonObject}, which is a {@link HashMap
+ *    HashMap&lt;String,Object&gt;} with some helpful accessor methods.
  *  * If the expected type is neither of the above, it is assumed
  *    to be a JavaBean and the JSON input must be a JSON object.
  *    The key/value pairs of the JSON input are interpreted as properties
@@ -101,7 +107,7 @@ import java.util.function.Function;
  *  return a result, a {@link JsonObject} is used as container for 
  *  the values provided by the JSON object.
  */
-public class JsonBeanDecoder extends JsonCoder {
+public class JsonBeanDecoder extends JsonCodec {
 
 	private Map<String,Class<?>> aliases = new HashMap<>();
 	private Function<String,Optional<Class<?>>> classConverter 
@@ -188,7 +194,7 @@ public class JsonBeanDecoder extends JsonCoder {
 	 */
 	public JsonObject readObject() throws JsonDecodeException {
 		try {
-			return readValue(JsonObject.class);
+			return readValue(DefaultJsonObject.class);
 		} catch (IOException e) {
 			throw new JsonDecodeException(e);
 		}
@@ -343,7 +349,7 @@ public class JsonBeanDecoder extends JsonCoder {
 			throws JsonDecodeException {
 		if (!Collection.class.isAssignableFrom(arrayType)) {
 			@SuppressWarnings("unchecked")
-			Collection<T> result = (Collection<T>)new JsonArray();
+			Collection<T> result = (Collection<T>)JsonArray.create();
 			return result;
 		}
 		if (arrayType.isInterface()) {
@@ -352,7 +358,7 @@ public class JsonBeanDecoder extends JsonCoder {
 				return new HashSet<>();
 			}
 			@SuppressWarnings("unchecked")
-			Collection<T> result = (Collection<T>)new JsonArray();
+			Collection<T> result = (Collection<T>)JsonArray.create();
 			return result;
 		}
 		// Implementation type, we'll try our best
@@ -384,7 +390,7 @@ public class JsonBeanDecoder extends JsonCoder {
 				if (aliases.containsKey(provided)) {
 					actualCls = aliases.get(provided);
 				} else {
-					actualCls = classConverter.apply(provided).orElse(JsonObject.class);
+					actualCls = classConverter.apply(provided).orElse(DefaultJsonObject.class);
 				}
 			}
 		}
@@ -394,7 +400,7 @@ public class JsonBeanDecoder extends JsonCoder {
 					+ " found " + actualCls.getName());
 		}
 		if (actualCls.equals(Object.class)) {
-			actualCls = JsonObject.class;
+			actualCls = DefaultJsonObject.class;
 		}
 		if (Map.class.isAssignableFrom(actualCls)) {
 			@SuppressWarnings("unchecked")

@@ -139,7 +139,7 @@ import java.util.Set;
  * 
  * 
  */
-public class JsonBeanEncoder extends JsonCoder 
+public class JsonBeanEncoder extends JsonCodec 
 	implements Flushable, Closeable {
 
 	private static final Set<String> EXCLUDED_DEFAULT = new HashSet<>();

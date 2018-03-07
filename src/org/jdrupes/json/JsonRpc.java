@@ -18,9 +18,10 @@
 
 package org.jdrupes.json;
 
+import java.util.List;
 import java.util.Optional;
 
-public interface JsonRpc {
+public interface JsonRpc extends JsonObject {
 	
 	/**
 	 * The invoked method.
@@ -43,7 +44,63 @@ public interface JsonRpc {
 	 */
 	Optional<Object> id();
 
-	public static JsonRpc fromJsonObject(JsonObject object) {
-		return new JsonRpcObject(object);
+	/**
+	 * Creates an instance of {@link JsonRpc}.
+	 * 
+	 * @return the result
+	 */
+	public static JsonRpc create() {
+		return new DefaultJsonRpc();
+	}
+	
+	public class DefaultJsonRpc extends DefaultJsonObject implements JsonRpc {
+
+		private static final long serialVersionUID = -5874908112198729940L;
+
+		public DefaultJsonRpc() {
+			put("jsonrpc", "2.0");
+		}
+		
+		@Override
+		public String method() {
+			return (String)get("method");
+		}
+
+		public DefaultJsonRpc setMethod(String method) {
+			put("method", method);
+			return this;
+		}
+		
+		@SuppressWarnings("unchecked")
+		@Override
+		public JsonArray params() {
+			Object values = get("params");
+			if (values instanceof JsonArray) {
+				return (JsonArray) values;
+			}
+			if (values instanceof List) {
+				return JsonArray.from((List<Object>)values);
+			}
+			throw new IllegalStateException(
+					"Field \"params\" has wrong type " + values.getClass().getName());
+		}
+
+		public DefaultJsonRpc setParams(JsonArray params) {
+			put("params", params);
+			return this;
+		}
+
+		public DefaultJsonRpc addParam(Object param) {
+			JsonArray params = (JsonArray)computeIfAbsent(
+					"params", key -> JsonArray.create());
+			params.append(param);
+			return this;
+		}
+		
+		@Override
+		public Optional<Object> id() {
+			return Optional.ofNullable(get("id"));
+		}
+		
 	}
 }
