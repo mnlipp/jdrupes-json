@@ -69,6 +69,18 @@ public abstract class JsonCodec {
 		return beanInfo;
 	}
 	
+	/**
+	 * The encoder and decoder make use of the information from
+	 * {@link PropertyEditorManager#findEditor(Class)} and
+	 * {@link Introspector#getBeanInfo(Class, Class)}. You'd
+	 * expect these methods to provide some caching to speed
+	 * up requests for the same infomration, but they don't.
+	 * 
+	 * The results are therefore kept in an internal cache.
+	 * This cache may, however, become outdated of additional
+	 * classes are loaded into the VM dynamically. This method
+	 * can be used to clear the caches if this is required. 
+	 */
 	public static void clearCaches() {
 		propertyEditorCache.clear();
 		beanInfoCache.clear();

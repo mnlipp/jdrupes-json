@@ -49,7 +49,7 @@ import java.util.Set;
  * 
  * The generated JSON objects can have an additional key/value pair with
  * key "class" and a class name. The class information is generated
- * only when it is needed, i.e. if it cannot be derived from the containing
+ * only if it is needed, i.e. if it cannot be derived from the containing
  * object.
  * 
  * Given the following classes:
