@@ -44,6 +44,12 @@ public interface JsonRpc extends JsonObject {
 	 */
 	Optional<Object> id();
 
+	public JsonRpc setMethod(String method);
+
+	public JsonRpc setParams(JsonArray params);
+
+	public JsonRpc addParam(Object param);
+	
 	/**
 	 * Creates an instance of {@link JsonRpc}.
 	 * 
@@ -66,6 +72,7 @@ public interface JsonRpc extends JsonObject {
 			return (String)get("method");
 		}
 
+		@Override
 		public DefaultJsonRpc setMethod(String method) {
 			put("method", method);
 			return this;
@@ -85,11 +92,13 @@ public interface JsonRpc extends JsonObject {
 					"Field \"params\" has wrong type " + values.getClass().getName());
 		}
 
+		@Override
 		public DefaultJsonRpc setParams(JsonArray params) {
 			put("params", params);
 			return this;
 		}
 
+		@Override
 		public DefaultJsonRpc addParam(Object param) {
 			JsonArray params = (JsonArray)computeIfAbsent(
 					"params", key -> JsonArray.create());
