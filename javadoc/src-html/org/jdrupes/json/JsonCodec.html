@@ -28,28 +28,83 @@
 <span class="sourceLineNo">020</span><a name="line.20"></a>
 <span class="sourceLineNo">021</span>import com.fasterxml.jackson.core.JsonFactory;<a name="line.21"></a>
 <span class="sourceLineNo">022</span><a name="line.22"></a>
-<span class="sourceLineNo">023</span>/**<a name="line.23"></a>
-<span class="sourceLineNo">024</span> * The base class for the {@link JsonBeanEncoder} and {@link JsonBeanDecoder}.<a name="line.24"></a>
-<span class="sourceLineNo">025</span> */<a name="line.25"></a>
-<span class="sourceLineNo">026</span>public abstract class JsonCodec {<a name="line.26"></a>
-<span class="sourceLineNo">027</span><a name="line.27"></a>
-<span class="sourceLineNo">028</span>        private static JsonFactory defaultFactory = new JsonFactory();<a name="line.28"></a>
-<span class="sourceLineNo">029</span>        <a name="line.29"></a>
-<span class="sourceLineNo">030</span>        protected static JsonFactory defaultFactory() {<a name="line.30"></a>
-<span class="sourceLineNo">031</span>                return defaultFactory;<a name="line.31"></a>
-<span class="sourceLineNo">032</span>        }<a name="line.32"></a>
-<span class="sourceLineNo">033</span>        <a name="line.33"></a>
-<span class="sourceLineNo">034</span>        /**<a name="line.34"></a>
-<span class="sourceLineNo">035</span>         * Add an alias for the given class. If defined, the alias<a name="line.35"></a>
-<span class="sourceLineNo">036</span>         * will be used instead of the class name by the encoder.<a name="line.36"></a>
-<span class="sourceLineNo">037</span>         * <a name="line.37"></a>
-<span class="sourceLineNo">038</span>         * @param clazz the class<a name="line.38"></a>
-<span class="sourceLineNo">039</span>         * @param alias the alias<a name="line.39"></a>
-<span class="sourceLineNo">040</span>         * @return the object for easy chaining<a name="line.40"></a>
-<span class="sourceLineNo">041</span>         */<a name="line.41"></a>
-<span class="sourceLineNo">042</span>        public abstract JsonCodec addAlias(Class&lt;?&gt; clazz, String alias);<a name="line.42"></a>
-<span class="sourceLineNo">043</span>        <a name="line.43"></a>
-<span class="sourceLineNo">044</span>}<a name="line.44"></a>
+<span class="sourceLineNo">023</span>import java.beans.BeanInfo;<a name="line.23"></a>
+<span class="sourceLineNo">024</span>import java.beans.IntrospectionException;<a name="line.24"></a>
+<span class="sourceLineNo">025</span>import java.beans.Introspector;<a name="line.25"></a>
+<span class="sourceLineNo">026</span>import java.beans.PropertyEditor;<a name="line.26"></a>
+<span class="sourceLineNo">027</span>import java.beans.PropertyEditorManager;<a name="line.27"></a>
+<span class="sourceLineNo">028</span>import java.util.Collections;<a name="line.28"></a>
+<span class="sourceLineNo">029</span>import java.util.Map;<a name="line.29"></a>
+<span class="sourceLineNo">030</span>import java.util.WeakHashMap;<a name="line.30"></a>
+<span class="sourceLineNo">031</span><a name="line.31"></a>
+<span class="sourceLineNo">032</span>/**<a name="line.32"></a>
+<span class="sourceLineNo">033</span> * The base class for the {@link JsonBeanEncoder} and {@link JsonBeanDecoder}.<a name="line.33"></a>
+<span class="sourceLineNo">034</span> */<a name="line.34"></a>
+<span class="sourceLineNo">035</span>public abstract class JsonCodec {<a name="line.35"></a>
+<span class="sourceLineNo">036</span><a name="line.36"></a>
+<span class="sourceLineNo">037</span>        private static JsonFactory defaultFactory = new JsonFactory();<a name="line.37"></a>
+<span class="sourceLineNo">038</span>        <a name="line.38"></a>
+<span class="sourceLineNo">039</span>        protected static JsonFactory defaultFactory() {<a name="line.39"></a>
+<span class="sourceLineNo">040</span>                return defaultFactory;<a name="line.40"></a>
+<span class="sourceLineNo">041</span>        }<a name="line.41"></a>
+<span class="sourceLineNo">042</span><a name="line.42"></a>
+<span class="sourceLineNo">043</span>        private static final Map&lt;Class&lt;?&gt;,PropertyEditor&gt; propertyEditorCache<a name="line.43"></a>
+<span class="sourceLineNo">044</span>                = Collections.synchronizedMap(new WeakHashMap&lt;&gt;());<a name="line.44"></a>
+<span class="sourceLineNo">045</span>        <a name="line.45"></a>
+<span class="sourceLineNo">046</span>        protected static PropertyEditor findPropertyEditor(Class&lt;?&gt; cls) {<a name="line.46"></a>
+<span class="sourceLineNo">047</span>                PropertyEditor propertyEditor = propertyEditorCache.get(cls);<a name="line.47"></a>
+<span class="sourceLineNo">048</span>                if (propertyEditor == null &amp;&amp; !propertyEditorCache.containsKey(cls)) {<a name="line.48"></a>
+<span class="sourceLineNo">049</span>                        // Never looked for before.<a name="line.49"></a>
+<span class="sourceLineNo">050</span>                        propertyEditor = PropertyEditorManager.findEditor(cls);<a name="line.50"></a>
+<span class="sourceLineNo">051</span>                        propertyEditorCache.put(cls, propertyEditor);<a name="line.51"></a>
+<span class="sourceLineNo">052</span>                }<a name="line.52"></a>
+<span class="sourceLineNo">053</span>                return propertyEditor;<a name="line.53"></a>
+<span class="sourceLineNo">054</span>        }<a name="line.54"></a>
+<span class="sourceLineNo">055</span>        <a name="line.55"></a>
+<span class="sourceLineNo">056</span>        private static final Map&lt;Class&lt;?&gt;,BeanInfo&gt; beanInfoCache<a name="line.56"></a>
+<span class="sourceLineNo">057</span>                = Collections.synchronizedMap(new WeakHashMap&lt;&gt;());<a name="line.57"></a>
+<span class="sourceLineNo">058</span><a name="line.58"></a>
+<span class="sourceLineNo">059</span>        protected static BeanInfo findBeanInfo(Class&lt;?&gt; cls) {<a name="line.59"></a>
+<span class="sourceLineNo">060</span>                BeanInfo beanInfo = beanInfoCache.get(cls);<a name="line.60"></a>
+<span class="sourceLineNo">061</span>                if (beanInfo == null &amp;&amp; !beanInfoCache.containsKey(cls)) {<a name="line.61"></a>
+<span class="sourceLineNo">062</span>                        try {<a name="line.62"></a>
+<span class="sourceLineNo">063</span>                                beanInfo = Introspector.getBeanInfo(cls, Object.class);<a name="line.63"></a>
+<span class="sourceLineNo">064</span>                        } catch (IntrospectionException e) {<a name="line.64"></a>
+<span class="sourceLineNo">065</span>                                // Bad luck<a name="line.65"></a>
+<span class="sourceLineNo">066</span>                        }<a name="line.66"></a>
+<span class="sourceLineNo">067</span>                        beanInfoCache.put(cls, beanInfo);<a name="line.67"></a>
+<span class="sourceLineNo">068</span>                }<a name="line.68"></a>
+<span class="sourceLineNo">069</span>                return beanInfo;<a name="line.69"></a>
+<span class="sourceLineNo">070</span>        }<a name="line.70"></a>
+<span class="sourceLineNo">071</span>        <a name="line.71"></a>
+<span class="sourceLineNo">072</span>        /**<a name="line.72"></a>
+<span class="sourceLineNo">073</span>         * The encoder and decoder make use of the information from<a name="line.73"></a>
+<span class="sourceLineNo">074</span>         * {@link PropertyEditorManager#findEditor(Class)} and<a name="line.74"></a>
+<span class="sourceLineNo">075</span>         * {@link Introspector#getBeanInfo(Class, Class)}. You'd<a name="line.75"></a>
+<span class="sourceLineNo">076</span>         * expect these methods to provide some caching to speed<a name="line.76"></a>
+<span class="sourceLineNo">077</span>         * up requests for the same infomration, but they don't.<a name="line.77"></a>
+<span class="sourceLineNo">078</span>         * <a name="line.78"></a>
+<span class="sourceLineNo">079</span>         * The results are therefore kept in an internal cache.<a name="line.79"></a>
+<span class="sourceLineNo">080</span>         * This cache may, however, become outdated of additional<a name="line.80"></a>
+<span class="sourceLineNo">081</span>         * classes are loaded into the VM dynamically. This method<a name="line.81"></a>
+<span class="sourceLineNo">082</span>         * can be used to clear the caches if this is required. <a name="line.82"></a>
+<span class="sourceLineNo">083</span>         */<a name="line.83"></a>
+<span class="sourceLineNo">084</span>        public static void clearCaches() {<a name="line.84"></a>
+<span class="sourceLineNo">085</span>                propertyEditorCache.clear();<a name="line.85"></a>
+<span class="sourceLineNo">086</span>                beanInfoCache.clear();<a name="line.86"></a>
+<span class="sourceLineNo">087</span>        }<a name="line.87"></a>
+<span class="sourceLineNo">088</span>        <a name="line.88"></a>
+<span class="sourceLineNo">089</span>        /**<a name="line.89"></a>
+<span class="sourceLineNo">090</span>         * Add an alias for the given class. If defined, the alias<a name="line.90"></a>
+<span class="sourceLineNo">091</span>         * will be used instead of the class name by the encoder.<a name="line.91"></a>
+<span class="sourceLineNo">092</span>         * <a name="line.92"></a>
+<span class="sourceLineNo">093</span>         * @param clazz the class<a name="line.93"></a>
+<span class="sourceLineNo">094</span>         * @param alias the alias<a name="line.94"></a>
+<span class="sourceLineNo">095</span>         * @return the object for easy chaining<a name="line.95"></a>
+<span class="sourceLineNo">096</span>         */<a name="line.96"></a>
+<span class="sourceLineNo">097</span>        public abstract JsonCodec addAlias(Class&lt;?&gt; clazz, String alias);<a name="line.97"></a>
+<span class="sourceLineNo">098</span>        <a name="line.98"></a>
+<span class="sourceLineNo">099</span>}<a name="line.99"></a>
 
 
 

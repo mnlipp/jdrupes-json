@@ -89,7 +89,7 @@
 <span class="sourceLineNo">081</span>                @SuppressWarnings("unchecked")<a name="line.81"></a>
 <span class="sourceLineNo">082</span>                @Override<a name="line.82"></a>
 <span class="sourceLineNo">083</span>                public JsonArray params() {<a name="line.83"></a>
-<span class="sourceLineNo">084</span>                        Object values = get("params");<a name="line.84"></a>
+<span class="sourceLineNo">084</span>                        Object values = computeIfAbsent("params", key -&gt; JsonArray.create());<a name="line.84"></a>
 <span class="sourceLineNo">085</span>                        if (values instanceof JsonArray) {<a name="line.85"></a>
 <span class="sourceLineNo">086</span>                                return (JsonArray) values;<a name="line.86"></a>
 <span class="sourceLineNo">087</span>                        }<a name="line.87"></a>
