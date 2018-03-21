@@ -29,6 +29,7 @@ import java.io.Flushable;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.io.Writer;
+import java.lang.reflect.Array;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
@@ -305,14 +306,14 @@ public class JsonBeanEncoder extends JsonCodec
 			gen.writeString(propertyEditor.getAsText());
 			return;
 		}
-		if (obj instanceof Object[]) {
+		if (obj.getClass().isArray()) {
 			gen.writeStartArray();
 			Class<?> compType = null;
 			if (expectedType != null && expectedType.isArray()) {
 				compType = expectedType.getComponentType();
 			}
-			for (Object item: (Object[])obj) {
-				doWriteObject(item, compType);
+			for (int i = 0; i < Array.getLength(obj); i++) {
+				doWriteObject(Array.get(obj, i), compType);
 			}
 			gen.writeEndArray();;
 			return;

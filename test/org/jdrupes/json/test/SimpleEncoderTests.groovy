@@ -39,6 +39,17 @@ class SimpleEncoderTests extends Specification {
 		json == '[["11","12","13"],["21","22"]]'
 	}
 	
+	void "Primitives Array Test"() {
+		setup: "Create data"
+		int[] a = [ 1, 2, 3, 4, 5, 6 ];
+		
+		when:
+		String json = JsonBeanEncoder.create().writeObject(a).toJson();
+		
+		then:
+		json == '[1,2,3,4,5,6]'
+	}
+	
 	void "Basic Map Test"() {
 		setup: "Create data"
 		Map data = new HashMap();
