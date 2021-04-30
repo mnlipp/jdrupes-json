@@ -112,6 +112,8 @@ dependencies {
 }
 
 task java11doc(type: JavaExec) {
+    enabled = !JavaVersion.current().isJava8()
+    
     dependsOn classes
     inputs.file "overview.md"
 
