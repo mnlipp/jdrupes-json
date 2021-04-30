@@ -41,6 +41,16 @@ version = releaseVersion + (isSnapshot ? "-SNAPSHOT" : "")
 String bundleVersion = releaseVersion +
 	(isSnapshot ? ".-\${tstamp}-SNAPSHOT" : ".rel")
 
+tasks.compileJava {
+    sourceCompatibility = 1.8
+    targetCompatibility = 1.8
+}
+
+tasks.compileTestJava {
+    sourceCompatibility = 1.8
+    targetCompatibility = 1.8
+}    
+    
 jar {
 	manifest {
 		attributes('bundleVersion': bundleVersion)
