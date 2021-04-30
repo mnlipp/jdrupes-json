@@ -57,10 +57,6 @@ jar {
 	}
 }
 
-configurations {
-    javadocTaglets
-}
-
 dependencies {
     compileOnly 'org.osgi:org.osgi.annotation:6.0.0'
 	compile group: 'com.fasterxml.jackson.core', name: 'jackson-core', version: '2.9.4'
@@ -105,23 +101,50 @@ jar {
 	}
 }
 
+configurations {
+    markdownDoclet
+    javadocTaglets
+}
+ 
 dependencies {
-	javadocTaglets "org.jdrupes.taglets:plantuml-taglet:1.0.3"
+    markdownDoclet "org.jdrupes.mdoclet:doclet:2.0.0"
+    javadocTaglets "org.jdrupes.taglets:plantuml-taglet:2.0.0"
 }
 
-javadoc {
-    options.tagletPath = configurations.javadocTaglets.files as List
-    options.taglets = ["org.jdrupes.taglets.plantUml.Taglet"]
+task java11doc(type: JavaExec) {
+    dependsOn classes
+    inputs.file "overview.md"
 
-    classpath = project.sourceSets.main.compileClasspath
-    source = sourceSets.main.allJava
-	options.addStringOption("overview", "overview.md")
-	inputs.file "overview.md"
-	options.addBooleanOption("linksource", true)
-	options.stylesheetFile(file("stylesheet.css"))
-    options.addStringOption("bottom", file("misc/javadoc.bottom.txt").text)
-	options.links "https://docs.oracle.com/javase/8/docs/api/"
-    destinationDir = file("../org.jdrupes.json.gh-pages/javadoc")
+    jvmArgs = ['--add-exports=jdk.javadoc/jdk.javadoc.internal.tool=ALL-UNNAMED']
+    classpath sourceSets.main.compileClasspath
+    classpath files(tasks.jar)
+    
+    ext.destinationDir = file("../org.jdrupes.json.gh-pages/javadoc")
+    
+    main = 'jdk.javadoc.internal.tool.Main'
+    args = ['-doctitle', 'JDrupes JSON library',
+        '-use',
+        '-linksource',
+        '-link', 'https://docs.oracle.com/en/java/javase/11/docs/api/',
+        '--add-exports', 'jdk.javadoc/jdk.javadoc.internal.tool=ALL-UNNAMED',
+        '-doclet', 'org.jdrupes.mdoclet.MDoclet',
+        '-docletpath', configurations.markdownDoclet.files.asType(List).join(":"),
+        '--disable-auto-highlight',
+        '-tagletpath', configurations.javadocTaglets.files.asType(List).join(":"),
+        '-taglet', 'org.jdrupes.taglets.plantUml.PlantUml',
+        '-taglet', 'org.jdrupes.taglets.plantUml.StartUml',
+        '-taglet', 'org.jdrupes.taglets.plantUml.EndUml',
+        '-overview', 'overview.md',
+        '-d', destinationDir,
+        '-sourcepath', 'src/',
+        '-subpackages', 'org.jdrupes.json',
+        '-bottom', file("misc/javadoc.bottom.txt").text,
+        '--allow-script-in-comments',
+        '-Xdoclint:-html',
+        '--add-exports=jdk.javadoc/jdk.javadoc.internal.doclets.formats.html=ALL-UNNAMED'
+        ]
+    
+    ignoreExitValue true
 }
 
 task sourcesJar(type: Jar) {
@@ -130,7 +153,7 @@ task sourcesJar(type: Jar) {
 }
 
 task javadocJar(type: Jar) {
-	dependsOn "javadoc"
+	dependsOn "java11doc"
 	from javadoc.destinationDir
 	classifier "javadoc"
 }

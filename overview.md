@@ -1,8 +1,3 @@
-JDrupes JSON library.
-
-JDrupes JSON Library
-==================
-
 This small library is based (and depends) on the 
 [Jackson core library](https://github.com/FasterXML/jackson-core).
 
