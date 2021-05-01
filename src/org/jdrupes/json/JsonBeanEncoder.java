@@ -137,239 +137,258 @@ import java.util.Set;
  * 
  * 
  */
-public class JsonBeanEncoder extends JsonCodec 
-	implements Flushable, Closeable {
+public class JsonBeanEncoder extends JsonCodec
+        implements Flushable, Closeable {
 
-	private static final Set<String> EXCLUDED_DEFAULT = new HashSet<>();
+    private static final Set<String> EXCLUDED_DEFAULT = new HashSet<>();
 
-	static {
-		// See https://issues.apache.org/jira/browse/GROOVY-8284
-		EXCLUDED_DEFAULT.add("groovy.lang.MetaClass");
-	}
+    static {
+        // See https://issues.apache.org/jira/browse/GROOVY-8284
+        EXCLUDED_DEFAULT.add("groovy.lang.MetaClass");
+    }
 
-	private Map<Class<?>, String> aliases = new HashMap<>();
-	private Set<String> excluded = EXCLUDED_DEFAULT;
-	private JsonGenerator gen;
-	private StringWriter writer = null;
+    private Map<Class<?>, String> aliases = new HashMap<>();
+    private Set<String> excluded = EXCLUDED_DEFAULT;
+    private boolean omitClass;
+    private JsonGenerator gen;
+    private StringWriter writer = null;
 
-	@Override
-	public JsonBeanEncoder addAlias(Class<?> clazz, String alias) {
-		aliases.put(clazz, alias);
-		return this;
-	}
+    @Override
+    public JsonBeanEncoder addAlias(Class<?> clazz, String alias) {
+        aliases.put(clazz, alias);
+        return this;
+    }
 
-	/**
-	 * Add a type to excude from encoding, usually because it cannot
-	 * be converted to JSON. Properties of such types should be
-	 * marked as {@link Transient}. However, sometimes base types
-	 * don't follow the rules.
-	 * 
-	 * @param className
-	 * @return the encoder for easy chaining
-	 */
-	public JsonBeanEncoder addExcluded(String className) {
-		if (excluded == EXCLUDED_DEFAULT) {
-			excluded = new HashSet<>(EXCLUDED_DEFAULT);
-		}
-		excluded.add(className);
-		return this;
-	}
+    /**
+     * Configure the encoder to not generate the `class` information
+     * even when needed to properly restore the Object graph.
+     * 
+     * While this contradicts the initial objective to provide JSON
+     * persistence for JavaBeans, this is a valid option if the generated
+     * JSON is used for transferring information to an environment where
+     * the information provided by `class` isn't useful.    
+     * 
+     * @return the encoder for easy chaining
+     */
+    public JsonBeanEncoder omitClass() {
+        omitClass = true;
+        return this;
+    }
 
-	/**
-	 * Create a new encoder using a default {@link JsonGenerator}. 
-	 * 
-	 * @param out the sink
-	 * @return the encoder
-	 */
-	public static JsonBeanEncoder create(Writer out) {
-		try {
-			return new JsonBeanEncoder(defaultFactory().createGenerator(out));
-		} catch (IOException e) {
-			throw new IllegalArgumentException();
-		}
-	}
+    /**
+     * Add a type to excude from encoding, usually because it cannot
+     * be converted to JSON. Properties of such types should be
+     * marked as {@link Transient}. However, sometimes base types
+     * don't follow the rules.
+     * 
+     * @param className
+     * @return the encoder for easy chaining
+     */
+    public JsonBeanEncoder addExcluded(String className) {
+        if (excluded == EXCLUDED_DEFAULT) {
+            excluded = new HashSet<>(EXCLUDED_DEFAULT);
+        }
+        excluded.add(className);
+        return this;
+    }
 
-	/**
-	 * Create a new encoder using a default {@link JsonGenerator}
-	 * that writes to an internally created {@link StringWriter}. 
-	 * The result can be obtained by invoking {@link #toJson()}.
-	 * 
-	 * @return the encoder
-	 */
-	public static JsonBeanEncoder create() {
-		return new JsonBeanEncoder();
-	}
+    /**
+     * Create a new encoder using a default {@link JsonGenerator}. 
+     * 
+     * @param out the sink
+     * @return the encoder
+     */
+    public static JsonBeanEncoder create(Writer out) {
+        try {
+            return new JsonBeanEncoder(defaultFactory().createGenerator(out));
+        } catch (IOException e) {
+            throw new IllegalArgumentException();
+        }
+    }
 
-	/**
-	 * Create a new encoder using the given {@link JsonGenerator}. 
-	 * 
-	 * @param generator the generator
-	 * @return the encoder
-	 */
-	public static JsonBeanEncoder create(JsonGenerator generator) {
-		return new JsonBeanEncoder(generator);
-	}
+    /**
+     * Create a new encoder using a default {@link JsonGenerator}
+     * that writes to an internally created {@link StringWriter}. 
+     * The result can be obtained by invoking {@link #toJson()}.
+     * 
+     * @return the encoder
+     */
+    public static JsonBeanEncoder create() {
+        return new JsonBeanEncoder();
+    }
 
-	private JsonBeanEncoder() {
-		writer = new StringWriter();
-		try {
-			gen = defaultFactory().createGenerator(writer);
-		} catch (IOException e) {
-			throw new IllegalArgumentException();
-		}
-	}
+    /**
+     * Create a new encoder using the given {@link JsonGenerator}. 
+     * 
+     * @param generator the generator
+     * @return the encoder
+     */
+    public static JsonBeanEncoder create(JsonGenerator generator) {
+        return new JsonBeanEncoder(generator);
+    }
 
-	private JsonBeanEncoder(JsonGenerator generator) {
-		gen = generator;
-	}
+    private JsonBeanEncoder() {
+        writer = new StringWriter();
+        try {
+            gen = defaultFactory().createGenerator(writer);
+        } catch (IOException e) {
+            throw new IllegalArgumentException();
+        }
+    }
 
-	@Override
-	public void flush() throws IOException {
-		gen.flush();
-	}
+    private JsonBeanEncoder(JsonGenerator generator) {
+        gen = generator;
+    }
 
-	@Override
-	public void close() throws IOException {
-		gen.close();
-	}
+    @Override
+    public void flush() throws IOException {
+        gen.flush();
+    }
 
-	/**
-	 * Returns the text written to the output. Can only be used
-	 * if the encoder has been created with {@link #JsonBeanEncoder()}.
-	 * 
-	 * @return the result
-	 */
-	public String toJson() {
-		if (writer == null) {
-			throw new IllegalStateException(
-					"JsonBeanEncoder has been created without a known writer.");
-		}
-		try {
-			gen.flush();
-		} catch (IOException e) {
-			throw new IllegalStateException(e);
-		}
-		return writer.toString();
-	}
-	
-	public JsonBeanEncoder writeArray(Object... items) throws IOException {
-		doWriteObject(items, items.getClass());
-		return this;
-	}
-	
-	public JsonBeanEncoder writeObject(Object obj) throws IOException {
-		doWriteObject(obj, obj.getClass());
-		return this;
-	}
-	
-	private void doWriteObject(Object obj, Class<?> expectedType)
-		throws IOException {
-		if (obj == null) {
-			gen.writeNull();
-			return;
-		}
-		if (obj instanceof Boolean) {
-			gen.writeBoolean((Boolean)obj);
-			return;
-		} 
-		if (obj instanceof Byte) {
-			gen.writeNumber(((Byte)obj).intValue());
-			return;
-		} 
-		if (obj instanceof Number) {
-			if (obj instanceof Short) {
-				gen.writeNumber((Short)obj);
-				return;
-			}
-			if (obj instanceof Integer) {
-				gen.writeNumber((Integer)obj);
-				return;
-			}
-			if (obj instanceof Long) {
-				gen.writeNumber((Long)obj);
-				return;
-			}
-			if (obj instanceof BigInteger) {
-				gen.writeNumber((BigInteger)obj);
-				return;
-			}
-			if (obj instanceof BigDecimal) {
-				gen.writeNumber((BigDecimal)obj);
-				return;
-			}
-			gen.writeNumber((Double)obj);
-			return;
-		}
-		PropertyEditor propertyEditor = findPropertyEditor(obj.getClass());
-		if (propertyEditor != null) {
-			propertyEditor.setValue(obj);
-			gen.writeString(propertyEditor.getAsText());
-			return;
-		}
-		if (obj.getClass().isArray()) {
-			gen.writeStartArray();
-			Class<?> compType = null;
-			if (expectedType != null && expectedType.isArray()) {
-				compType = expectedType.getComponentType();
-			}
-			for (int i = 0; i < Array.getLength(obj); i++) {
-				doWriteObject(Array.get(obj, i), compType);
-			}
-			gen.writeEndArray();;
-			return;
-		}
-		if (obj instanceof Collection) {
-			gen.writeStartArray();
-			for (Object item: (Collection<?>)obj) {
-				doWriteObject(item, null);
-			}
-			gen.writeEndArray();
-			return;
-		}
-		if (obj instanceof Map) {
-			@SuppressWarnings("unchecked")
-			Map<String,Object> map = (Map<String,Object>)obj;
-			gen.writeStartObject();
-			for (Map.Entry<String, Object> e: map.entrySet()) {
-				gen.writeFieldName(e.getKey());
-				doWriteObject(e.getValue(), null);
-			}
-			gen.writeEndObject();
-			return;
-		}
-		BeanInfo beanInfo = findBeanInfo(obj.getClass());
-		if (beanInfo != null && beanInfo.getPropertyDescriptors().length > 0) {
-			gen.writeStartObject();
-			if (!obj.getClass().equals(expectedType)) {
-				gen.writeStringField("class", aliases.computeIfAbsent(
-						obj.getClass(), k -> k.getName()));
-			}
-			for (PropertyDescriptor propDesc : beanInfo.getPropertyDescriptors()) {
-				if (propDesc.getValue("transient") != null) {
-					continue;
-				}
-				if (excluded.contains(propDesc.getPropertyType().getName())) {
-					continue;
-				}
-				Method method = propDesc.getReadMethod();
-				if (method == null) {
-					continue;
-				}
-				try {
-					Object value = method.invoke(obj);
-					gen.writeFieldName(propDesc.getName());
-					doWriteObject(value, propDesc.getPropertyType());
-					continue;
-				} catch (IllegalAccessException | IllegalArgumentException 
-						| InvocationTargetException e) {
-					// Bad luck
-				}
-			}
-			gen.writeEndObject();
-			return;
-		}
-		// Last resort
-		gen.writeString(obj.toString());
-	}
-	
+    @Override
+    public void close() throws IOException {
+        gen.close();
+    }
+
+    /**
+     * Returns the text written to the output. Can only be used
+     * if the encoder has been created with {@link #JsonBeanEncoder()}.
+     * 
+     * @return the result
+     */
+    public String toJson() {
+        if (writer == null) {
+            throw new IllegalStateException(
+                "JsonBeanEncoder has been created without a known writer.");
+        }
+        try {
+            gen.flush();
+        } catch (IOException e) {
+            throw new IllegalStateException(e);
+        }
+        return writer.toString();
+    }
+
+    public JsonBeanEncoder writeArray(Object... items) throws IOException {
+        doWriteObject(items, items.getClass());
+        return this;
+    }
+
+    public JsonBeanEncoder writeObject(Object obj) throws IOException {
+        doWriteObject(obj, obj.getClass());
+        return this;
+    }
+
+    private void doWriteObject(Object obj, Class<?> expectedType)
+            throws IOException {
+        if (obj == null) {
+            gen.writeNull();
+            return;
+        }
+        if (obj instanceof Boolean) {
+            gen.writeBoolean((Boolean) obj);
+            return;
+        }
+        if (obj instanceof Byte) {
+            gen.writeNumber(((Byte) obj).intValue());
+            return;
+        }
+        if (obj instanceof Number) {
+            if (obj instanceof Short) {
+                gen.writeNumber((Short) obj);
+                return;
+            }
+            if (obj instanceof Integer) {
+                gen.writeNumber((Integer) obj);
+                return;
+            }
+            if (obj instanceof Long) {
+                gen.writeNumber((Long) obj);
+                return;
+            }
+            if (obj instanceof BigInteger) {
+                gen.writeNumber((BigInteger) obj);
+                return;
+            }
+            if (obj instanceof BigDecimal) {
+                gen.writeNumber((BigDecimal) obj);
+                return;
+            }
+            gen.writeNumber((Double) obj);
+            return;
+        }
+        PropertyEditor propertyEditor = findPropertyEditor(obj.getClass());
+        if (propertyEditor != null) {
+            propertyEditor.setValue(obj);
+            gen.writeString(propertyEditor.getAsText());
+            return;
+        }
+        if (obj.getClass().isArray()) {
+            gen.writeStartArray();
+            Class<?> compType = null;
+            if (expectedType != null && expectedType.isArray()) {
+                compType = expectedType.getComponentType();
+            }
+            for (int i = 0; i < Array.getLength(obj); i++) {
+                doWriteObject(Array.get(obj, i), compType);
+            }
+            gen.writeEndArray();
+            ;
+            return;
+        }
+        if (obj instanceof Collection) {
+            gen.writeStartArray();
+            for (Object item : (Collection<?>) obj) {
+                doWriteObject(item, null);
+            }
+            gen.writeEndArray();
+            return;
+        }
+        if (obj instanceof Map) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> map = (Map<String, Object>) obj;
+            gen.writeStartObject();
+            for (Map.Entry<String, Object> e : map.entrySet()) {
+                gen.writeFieldName(e.getKey());
+                doWriteObject(e.getValue(), null);
+            }
+            gen.writeEndObject();
+            return;
+        }
+        BeanInfo beanInfo = findBeanInfo(obj.getClass());
+        if (beanInfo != null && beanInfo.getPropertyDescriptors().length > 0) {
+            gen.writeStartObject();
+            if (!obj.getClass().equals(expectedType) && !omitClass) {
+                gen.writeStringField("class", aliases.computeIfAbsent(
+                    obj.getClass(), k -> k.getName()));
+            }
+            for (PropertyDescriptor propDesc : beanInfo
+                .getPropertyDescriptors()) {
+                if (propDesc.getValue("transient") != null) {
+                    continue;
+                }
+                if (excluded.contains(propDesc.getPropertyType().getName())) {
+                    continue;
+                }
+                Method method = propDesc.getReadMethod();
+                if (method == null) {
+                    continue;
+                }
+                try {
+                    Object value = method.invoke(obj);
+                    gen.writeFieldName(propDesc.getName());
+                    doWriteObject(value, propDesc.getPropertyType());
+                    continue;
+                } catch (IllegalAccessException | IllegalArgumentException
+                        | InvocationTargetException e) {
+                    // Bad luck
+                }
+            }
+            gen.writeEndObject();
+            return;
+        }
+        // Last resort
+        gen.writeString(obj.toString());
+    }
+
 }

@@ -31,43 +31,58 @@ import org.junit.Test;
 
 public class EncoderListTests {
 
-	public class Bean1 {
-		private List<Bean2> items = new ArrayList<>();
+    public class Bean1 {
+        private List<Bean2> items = new ArrayList<>();
 
-		public List<Bean2> getItems() {
-			return items;
-		}
-		
-		public void setItems(List<Bean2> items) {
-			this.items = items;
-		}
-	}
-	
-	public class Bean2 {
-		private String name;
+        public List<Bean2> getItems() {
+            return items;
+        }
 
-		public String getName() {
-			return name;
-		}
-		
-		public void setName(String name) {
-			this.name = name;
-		}
-	}
-	
-	@Test
-	public void test() throws IOException {
-		
-		Bean2 item1 = new Bean2();
-		item1.setName("Item1");
-		Bean1 bean = new Bean1();
-		bean.setItems(Arrays.asList(new Bean2[] { item1 }));
-		
-		String result = JsonBeanEncoder.create().writeObject(bean).toJson();
-		assertEquals("{\"items\":["
-				+ "{\"class\":\"org.jdrupes.json.test.EncoderListTests$Bean2\","
-				+ "\"name\":\"Item1\"}]}",
-				result);
-	}
+        public void setItems(List<Bean2> items) {
+            this.items = items;
+        }
+    }
+
+    public class Bean2 {
+        private String name;
+
+        public String getName() {
+            return name;
+        }
+
+        public void setName(String name) {
+            this.name = name;
+        }
+    }
+
+    @Test
+    public void testWithClass() throws IOException {
+
+        Bean2 item1 = new Bean2();
+        item1.setName("Item1");
+        Bean1 bean = new Bean1();
+        bean.setItems(Arrays.asList(new Bean2[] { item1 }));
+
+        String result = JsonBeanEncoder.create().writeObject(bean).toJson();
+        assertEquals("{\"items\":["
+            + "{\"class\":\"org.jdrupes.json.test.EncoderListTests$Bean2\","
+            + "\"name\":\"Item1\"}]}",
+            result);
+    }
+
+    @Test
+    public void testWithoutClass() throws IOException {
+
+        Bean2 item1 = new Bean2();
+        item1.setName("Item1");
+        Bean1 bean = new Bean1();
+        bean.setItems(Arrays.asList(new Bean2[] { item1 }));
+
+        String result
+            = JsonBeanEncoder.create().omitClass().writeObject(bean).toJson();
+        assertEquals("{\"items\":["
+            + "{\"name\":\"Item1\"}]}",
+            result);
+    }
 
 }
