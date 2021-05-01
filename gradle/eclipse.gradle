@@ -14,7 +14,6 @@ eclipse {
         buildCommand 'net.sf.eclipsecs.core.CheckstyleBuilder'
         // 'org.eclipse.buildship.core.gradleprojectnature',
         natures 'org.eclipse.jdt.core.javanature', \
-            'bndtools.core.bndnature', \
             'net.sf.eclipsecs.core.CheckstyleNature', \
             'org.eclipse.jdt.groovy.core.groovyNature'
     }
