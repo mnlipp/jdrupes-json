@@ -22,11 +22,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-
 import org.jdrupes.json.JsonBeanEncoder;
-
 import static org.junit.Assert.*;
-
 import org.junit.Test;
 
 public class EncoderListTests {
