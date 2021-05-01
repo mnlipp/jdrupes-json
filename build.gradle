@@ -256,4 +256,7 @@ bintray {
 			 }
 		}
 	}
- }
+}
+
+apply from: "${project.rootDir}/gradle/eclipse.gradle"
+ 
