@@ -1,0 +1,90 @@
+// Additional jars for publishing
+
+task sourcesJar(type: Jar) {
+    from sourceSets.main.allJava
+    classifier "sources"
+}
+
+task javadocJar(type: Jar) {
+    dependsOn "java11doc"
+    from javadoc.destinationDir
+    classifier "javadoc"
+}
+
+artifacts {
+    archives sourcesJar
+    archives javadocJar
+}
+
+// MavenPublishing (new)
+    
+publishing {
+        
+    repositories {
+        maven {
+            name "snapshot"
+            url "https://oss.sonatype.org/content/repositories/snapshots/"
+            credentials {
+                username project.properties['sonatypeUsername'] ?: "nouser"
+                password project.properties['sonatypePassword'] ?: "nopass"
+            }
+        }
+        maven {
+            name "release"
+            url "https://oss.sonatype.org/service/local/staging/deploy/maven2/"
+            credentials {
+                username project.properties['sonatypeUsername'] ?: "nouser"
+                password project.properties['sonatypePassword'] ?: "nopass"
+            }
+        }
+    }
+}
+
+// Additional configuration of publishing
+apply plugin: ConfigurePublishing
+
+configurePublishing {
+    withPomXml {
+        asNode().with {
+            appendNode('url', 'https://mnlipp.github.io/jdrupes-json/javadoc/index.html')
+            appendNode('scm').with {
+                appendNode('url', 'scm:https://github.com/mnlipp/jdrupes-json.git')
+                appendNode('connection', 'scm:https://github.com/mnlipp/jdrupes-json.git')
+                appendNode('developerConnection', 'https://github.com/mnlipp/jdrupes-json.git')
+            }
+            appendNode('licenses').with {
+                appendNode('license').with {
+                    appendNode('name', 'LGPL 3.0')
+                    appendNode('url', 'https://www.gnu.org/licenses/lgpl-3.0.en.html')
+                    appendNode('distribution', 'repo')
+                }
+            }
+            appendNode('developers').with {
+                appendNode('developer').with {
+                    appendNode('id', 'mnlipp')
+                    appendNode('name', 'Michael N. Lipp')
+                }
+            }
+        }
+    }
+}
+
+task releaseTag {
+    doLast {
+        String name = project.name.startsWith(project.group + ".") ?
+            project.name.substring(project.group.length() + 1) : project.name
+        name = name.replace('.', '-')
+        String tag = name + "-" + project.version
+        grgit.tag.add(name: tag, message: "Released.")
+        grgit.push(refsOrSpecs: [tag])
+    }
+}
+
+build.mustRunAfter "releaseTag"
+
+task stageOnOssrh {
+    group = "publishing"
+    
+    dependsOn "releaseTag"
+    dependsOn "publishMavenPublicationToReleaseRepository"
+}

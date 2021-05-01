@@ -13,7 +13,6 @@ buildscript {
 
 plugins {
     id 'biz.aQute.bnd.builder' version "5.3.0"
-    id "com.jfrog.bintray" version "1.7"
 	id "org.jdrupes.mdoclet" version "1.0.3"
 }
 
@@ -34,7 +33,7 @@ archivesBaseName = 'json'
 description = "JDrupes JSON library"
 
 ext.releaseVersion = "2.1.0"
-ext.isSnapshot = true
+ext.isSnapshot = false
 version = releaseVersion + (isSnapshot ? "-SNAPSHOT" : "")
 
 // Derive bundle version and propagate to bnd
@@ -149,114 +148,7 @@ task java11doc(type: JavaExec) {
     ignoreExitValue true
 }
 
-task sourcesJar(type: Jar) {
-	from sourceSets.main.allJava
-	classifier "sources"
-}
-
-task javadocJar(type: Jar) {
-	dependsOn "java11doc"
-	from javadoc.destinationDir
-	classifier "javadoc"
-}
-
-// Allow build without signing information (e.g. travis)
-if (project.hasProperty('signing.keyId')) {
-	signing {
-		sign configurations.archives
-	}
-}
-
-// MavenPublishing (new), incomplete, works only for local. 
-
-publishing {
-	
-	publications {
-		mavenJava(MavenPublication) {
-			artifactId = archivesBaseName
-			from components.java
-			artifact sourcesJar
-			artifact javadocJar
-		}
-	}
-}
-
-// MavenPublishing (original), still needed for remote 
-
-uploadArchives {
-	dependsOn baseline
-	
-	repositories {
-		mavenDeployer {
-			beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
- 
-			pom.project {
-			
-				name project.name
-				artifactId project.archivesBaseName
-				packaging 'pom'
-				description project.description
-				url 'https://github.com/mnlipp/jdrupes-json'
- 
-				scm {
-					url 'scm:git@github.com:mnlipp/jdrupes-json.git'
-					connection 'scm:git@github.com:mnlipp/jdrupes-json.git'
-					developerConnection 'git@github.com:mnlipp/jdrupes-json.git'
-				}
- 
-				licenses {
-					license {
-						name 'LGPL 3.0'
-						url 'https://www.gnu.org/licenses/lgpl-3.0.en.html'
-						distribution 'repo'
-					}
-				}
- 
-				developers {
-					developer {
-						id 'mnlipp'
-						name 'Michael N. Lipp'
-					}
-				}
-			}
-			
-			artifacts {
-				archives jar
-				archives sourcesJar
-				archives javadocJar
-			}
-
-			repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2/") {
-				authentication(userName: project.properties['sonatypeUsername'] ?: "nouser", 
-					password: project.properties['sonatypePassword'] ?: "nopass")
-			}
-			snapshotRepository(url: "https://oss.sonatype.org/content/repositories/snapshots/") {
-				authentication(userName: project.properties['sonatypeUsername'] ?: "nouser", 
-					password: project.properties['sonatypePassword'] ?: "nopass")
-			}
-
-		}
-	}
-}
-
-bintray {
-	user = project.properties['bintrayUser'] ?: "nouser"
-	key = project.properties['bintrayApiKey'] ?: "nokey"
-	publications = ['mavenJava']
-	publish = true
-	pkg {
-		repo = "jdrupes"
-		name = project.group
-		version {
-			 name = project.version
-			 licenses = ['LGPL-3.0']
-			 vcsUrl = 'https://github.com/mnlipp/jdrupes-json'
-			 gpg {
-				 sign = true
-			 }
-		}
-	}
-}
+apply from: "${project.rootDir}/gradle/publishing.gradle"
 
 apply from: "${project.rootDir}/gradle/eclipse.gradle"
  
