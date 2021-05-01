@@ -106,474 +106,481 @@ import org.jdrupes.json.JsonObject.DefaultJsonObject;
  */
 public class JsonBeanDecoder extends JsonCodec {
 
-	private Map<String,Class<?>> aliases = new HashMap<>();
-	private Function<String,Optional<Class<?>>> classConverter 
-		= name -> {
-			try {
-				return Optional.ofNullable(Class.forName(name));
-			} catch (ClassNotFoundException e) {
-				return Optional.empty();
-			}
-		};
-	private JsonParser parser;
-	
-	@Override
-	public JsonBeanDecoder addAlias(Class<?> clazz, String alias) {
-		aliases.put(alias, clazz);
-		return this;
-	}
+    private Map<String, Class<?>> aliases = new HashMap<>();
+    private Function<String, Optional<Class<?>>> classConverter
+        = name -> {
+            try {
+                return Optional.ofNullable(Class.forName(name));
+            } catch (ClassNotFoundException e) {
+                return Optional.empty();
+            }
+        };
+    private JsonParser parser;
 
-	/**
-	 * Sets the converter that maps a specified "class" to an actual Java
-	 * {@link Class}. If it does not return a class, a {@link HashMap} is 
-	 * used to store the data of the JSON object. 
-	 * 
-	 * @param converter the converter to use
-	 * @return the conversion result
-	 */
-	public JsonBeanDecoder setClassConverter(
-			Function<String,Optional<Class<?>>> converter) {
-		this.classConverter = converter;
-		return this;
-	}
-	
-	/**
-	 * Create a new decoder using a default {@link JsonParser}. 
-	 * 
-	 * @param in the source
-	 * @return the decoder
-	 */
-	public static JsonBeanDecoder create(Reader in) {
-		try {
-			return new JsonBeanDecoder(defaultFactory().createParser(in));
-		} catch (IOException e) {
-			throw new IllegalArgumentException(e);
-		}
-	}
+    @Override
+    public JsonBeanDecoder addAlias(Class<?> clazz, String alias) {
+        aliases.put(alias, clazz);
+        return this;
+    }
 
-	/**
-	 * Create a new decoder using a default parser to parse the
-	 * given string. 
-	 * 
-	 * @param input the input
-	 * @return the decoder
-	 */
-	public static JsonBeanDecoder create(String input) {
-		try {
-			return new JsonBeanDecoder(defaultFactory().createParser(input));
-		} catch (IOException e) {
-			throw new IllegalArgumentException(e);
-		}
-	}
+    /**
+     * Sets the converter that maps a specified "class" to an actual Java
+     * {@link Class}. If it does not return a class, a {@link HashMap} is 
+     * used to store the data of the JSON object. 
+     * 
+     * @param converter the converter to use
+     * @return the conversion result
+     */
+    public JsonBeanDecoder setClassConverter(
+            Function<String, Optional<Class<?>>> converter) {
+        this.classConverter = converter;
+        return this;
+    }
 
-	/**
-	 * Create a new decoder using the given parser. 
-	 * 
-	 * @param parser the parser
-	 * @return the decoder
-	 */
-	public static JsonBeanDecoder create(JsonParser parser) {
-		return new JsonBeanDecoder(parser);
-	}
+    /**
+     * Create a new decoder using a default {@link JsonParser}. 
+     * 
+     * @param in the source
+     * @return the decoder
+     */
+    public static JsonBeanDecoder create(Reader in) {
+        try {
+            return new JsonBeanDecoder(defaultFactory().createParser(in));
+        } catch (IOException e) {
+            throw new IllegalArgumentException(e);
+        }
+    }
 
-	public JsonBeanDecoder(JsonParser parser) {
-		if (parser == null) {
-			throw new IllegalArgumentException("Parser may not be null.");
-		}
-		this.parser = parser;
-	}
+    /**
+     * Create a new decoder using a default parser to parse the
+     * given string. 
+     * 
+     * @param input the input
+     * @return the decoder
+     */
+    public static JsonBeanDecoder create(String input) {
+        try {
+            return new JsonBeanDecoder(defaultFactory().createParser(input));
+        } catch (IOException e) {
+            throw new IllegalArgumentException(e);
+        }
+    }
 
-	/**
-	 * Read a JSON object description into a new {@link JsonObject}.
-	 * 
-	 * @return the object
-	 * @throws JsonDecodeException
-	 */
-	public JsonObject readObject() throws JsonDecodeException {
-		try {
-			return readValue(DefaultJsonObject.class);
-		} catch (IOException e) {
-			throw new JsonDecodeException(e);
-		}
-	}
+    /**
+     * Create a new decoder using the given parser. 
+     * 
+     * @param parser the parser
+     * @return the decoder
+     */
+    public static JsonBeanDecoder create(JsonParser parser) {
+        return new JsonBeanDecoder(parser);
+    }
 
-	/**
-	 * Read a JSON object description into a new object of the
-	 * expected type. The result may have a type derived from
-	 * the expected type if the JSON read has a `class` key.
-	 * 
-	 * @param expected the expected type
-	 * @return the result
-	 * @throws JsonDecodeException
-	 */
-	public <T> T readObject(Class<T> expected) throws JsonDecodeException {
-		try {
-			return readValue(expected);
-		} catch (IOException e) {
-			throw new JsonDecodeException(e);
-		}
-	}
-	
-	/**
-	 * Read a JSON array description into a new array of the
-	 * expected type.
-	 *
-	 * @param <T> the generic type
-	 * @param expected the expected type
-	 * @return the result
-	 * @throws JsonDecodeException
-	 */
-	public <T> T readArray(Class<T> expected) throws JsonDecodeException {
-		try {
-			return readValue(expected);
-		} catch (IOException e) {
-			throw new JsonDecodeException(e);
-		}
-	}
+    public JsonBeanDecoder(JsonParser parser) {
+        if (parser == null) {
+            throw new IllegalArgumentException("Parser may not be null.");
+        }
+        this.parser = parser;
+    }
 
-	private static final Object END_VALUE = new Object();
-	
-	@SuppressWarnings("unchecked")
-	private <T> T readValue(Class<T> expected) 
-			throws JsonDecodeException, IOException {
-		JsonToken token = parser.nextToken();
-		if (token == null) {
-			return null;
-		}
-		switch(token) {
-		case END_ARRAY:
-		case END_OBJECT:
-			return (T)END_VALUE;
-		case VALUE_NULL:
-			return null;
-		case VALUE_FALSE:
-			return (T)Boolean.FALSE;
-		case VALUE_TRUE:
-			return (T)Boolean.TRUE;
-		case VALUE_STRING:
-			PropertyEditor propertyEditor = findPropertyEditor(expected);
-			if (propertyEditor != null) {
-				propertyEditor.setAsText(parser.getText());
-				return (T)propertyEditor.getValue();
-			}
-			if (Enum.class.isAssignableFrom(expected)) {
-				@SuppressWarnings("rawtypes")
-				Class<Enum> enumClass = (Class<Enum>)expected;
-				return (T)Enum.valueOf(enumClass, parser.getText());
-			}
-			// fall through
-		case FIELD_NAME:
-			return (T)parser.getText();
-		case START_ARRAY:
-			if (expected.isArray() 
-					|| Collection.class.isAssignableFrom(expected)
-					|| expected.equals(Object.class)) {
-				return (T)readArrayValue(expected);
-			}
-			throw new JsonDecodeException(parser.getCurrentLocation()
-					+ ": Encountered unexpected array.");
-		case START_OBJECT:
-			return readObjectValue(expected);
-		default:
-			if (token.isScalarValue()) {
-				return readNumber(expected);
-			}
-			throw new JsonDecodeException(parser.getCurrentLocation()
-					+ ": Unexpected event.");
-		}
-	}
+    /**
+     * Read a JSON object description into a new {@link JsonObject}.
+     * 
+     * @return the object
+     * @throws JsonDecodeException
+     */
+    public JsonObject readObject() throws JsonDecodeException {
+        try {
+            return readValue(DefaultJsonObject.class);
+        } catch (IOException e) {
+            throw new JsonDecodeException(e);
+        }
+    }
 
-	@SuppressWarnings("unchecked")
-	private <T> T readNumber(Class<T> expected) throws IOException {
-		if (expected.equals(Byte.class) 
-				|| expected.equals(Byte.TYPE)) {
-			return (T)Byte.valueOf((byte)parser.getValueAsInt());
-		}
-		if (expected.equals(Short.class) 
-				|| expected.equals(Short.TYPE)) {
-			return (T)Short.valueOf((short)parser.getValueAsInt());
-		}
-		if (expected.equals(Integer.class) 
-				|| expected.equals(Integer.TYPE)) {
-			return (T)Integer.valueOf(parser.getValueAsInt());
-		}
-		if (expected.equals(BigInteger.class)) {
-			return (T)parser.getBigIntegerValue();
-		}
-		if (expected.equals(BigDecimal.class)) {
-			return (T)parser.getDecimalValue();
-		}
-		if (expected.equals(Float.class)
-				|| expected.equals(Float.TYPE)) {
-			return (T)Float.valueOf((float)parser.getValueAsDouble());
-		}
-		if (expected.equals(Long.class) 
-				|| expected.equals(Long.TYPE)
-				|| parser.currentToken() == JsonToken.VALUE_NUMBER_INT) {
-			return (T)Long.valueOf(parser.getValueAsLong());
-		}
-		return (T)Double.valueOf(parser.getValueAsDouble());
-	}
-	
-	@SuppressWarnings("unchecked")
-	private <T> Object readArrayValue(Class<T> arrayType) 
-			throws JsonDecodeException, IOException {
-		Collection<T> items = createCollection(arrayType);
-		Class<?> itemType = Object.class;
-		if (arrayType.isArray()) {
-			itemType = arrayType.getComponentType();
-		}
-		while (true) {
-			T item = (T)readValue(itemType);
-			if (item == END_VALUE) {
-				break;
-			}
-			items.add(item);
-		}
-		if (!arrayType.isArray()) {
-			return items;
-		}
-		Object result = Array.newInstance(itemType, items.size());
-		int index = 0;
-		for (Object o: items) {
-			Array.set(result, index++, o);
-		}
-		return result;
-	}
+    /**
+     * Read a JSON object description into a new object of the
+     * expected type. The result may have a type derived from
+     * the expected type if the JSON read has a `class` key.
+     * 
+     * @param expected the expected type
+     * @return the result
+     * @throws JsonDecodeException
+     */
+    public <T> T readObject(Class<T> expected) throws JsonDecodeException {
+        try {
+            return readValue(expected);
+        } catch (IOException e) {
+            throw new JsonDecodeException(e);
+        }
+    }
 
-	private <T> Collection<T> createCollection(Class<T> arrayType)
-			throws JsonDecodeException {
-		if (!Collection.class.isAssignableFrom(arrayType)) {
-			@SuppressWarnings("unchecked")
-			Collection<T> result = (Collection<T>)JsonArray.create();
-			return result;
-		}
-		if (arrayType.isInterface()) {
-			// This is how things should be: interface type
-			if (Set.class.isAssignableFrom(arrayType)) {
-				return new HashSet<>();
-			}
-			@SuppressWarnings("unchecked")
-			Collection<T> result = (Collection<T>)JsonArray.create();
-			return result;
-		}
-		// Implementation type, we'll try our best
-		try {
-			@SuppressWarnings("unchecked")
-			Collection<T> result = (Collection<T>)arrayType.newInstance();
-			return result;
-		} catch (InstantiationException | IllegalAccessException e) {
-			throw new JsonDecodeException(parser.getCurrentLocation()
-					+ ": Cannot create " + arrayType.getName(), e);
-		}
-	}
-	
-	private <T> T readObjectValue(Class<T> expected) 
-			throws JsonDecodeException, IOException {
-		JsonToken prefetched = parser.nextToken();
-		if (!prefetched.equals(JsonToken.FIELD_NAME)
-				&& !prefetched.equals(JsonToken.END_OBJECT)) {
-			throw new JsonDecodeException(parser.getCurrentLocation()
-					+ ": Unexpected Json event " + prefetched);
-		}
-		Class<?> actualCls = expected;
-		if (prefetched.equals(JsonToken.FIELD_NAME)) {
-			String key = parser.getText();		
-			if ("class".equals(key)) {
-				prefetched = null; // Now it's consumed
-				parser.nextToken();
-				String provided = parser.getText();
-				if (aliases.containsKey(provided)) {
-					actualCls = aliases.get(provided);
-				} else {
-					actualCls = classConverter.apply(provided).orElse(DefaultJsonObject.class);
-				}
-			}
-		}
-		if (!expected.isAssignableFrom(actualCls)) {
-			throw new JsonDecodeException(parser.getCurrentLocation()
-					+ ": Expected " + expected.getName()
-					+ " found " + actualCls.getName());
-		}
-		if (actualCls.equals(Object.class)) {
-			actualCls = DefaultJsonObject.class;
-		}
-		if (Map.class.isAssignableFrom(actualCls)) {
-			@SuppressWarnings("unchecked")
-			Map<String,Object> map = createMapInstance(
-					(Class<Map<String,Object>>)actualCls);
-			objectIntoMap(map, prefetched);
-			@SuppressWarnings("unchecked")
-			T result = (T)map;
-			return result;
-		}
-		@SuppressWarnings("unchecked")
-		Class<T> beanCls = (Class<T>)actualCls;
-		return objectToBean(beanCls, prefetched);
-	}
+    /**
+     * Read a JSON array description into a new array of the
+     * expected type.
+     *
+     * @param <T> the generic type
+     * @param expected the expected type
+     * @return the result
+     * @throws JsonDecodeException
+     */
+    public <T> T readArray(Class<T> expected) throws JsonDecodeException {
+        try {
+            return readValue(expected);
+        } catch (IOException e) {
+            throw new JsonDecodeException(e);
+        }
+    }
 
-	private <M extends Map<String,Object>> M createMapInstance(Class<M> mapCls) 
-			throws JsonDecodeException {
-		try {
-			return (M)mapCls.newInstance();
-		} catch (InstantiationException
-				| IllegalAccessException e) {
-			throw new JsonDecodeException(parser.getCurrentLocation()
-					+ ": Cannot create " + mapCls.getName(), e);
-		}
-	}
-	
-	private void objectIntoMap(Map<String,Object> result, JsonToken prefetched)
-			throws JsonDecodeException, IOException {
-		whileLoop:
-		while (true) {
-			JsonToken event = prefetched != null ? prefetched : parser.nextToken();
-			prefetched = null; // Consumed.
-			switch(event) {
-			case END_OBJECT:
-				break whileLoop;
-				
-			case FIELD_NAME:
-				String key = parser.getText();
-				Object value = readValue(Object.class);
-				result.put(key, value);
-				break;
-				
-			default:
-				throw new JsonDecodeException(parser.getCurrentLocation()
-						+ ": Unexpected Json event " + event);
-			}
-		}
-	}
-	
-	private <T> T objectToBean(Class<T> beanCls, JsonToken prefetched)
-			throws JsonDecodeException, IOException {
-		Map<String,PropertyDescriptor> beanProps = new HashMap<>();
-		BeanInfo beanInfo = findBeanInfo(beanCls);
-		if (beanInfo == null) {
-			throw new JsonDecodeException(parser.getCurrentLocation()
-					+ ": Cannot introspect " + beanCls);
-		}
-		for (PropertyDescriptor 
-				p: beanInfo.getPropertyDescriptors()) {
-			beanProps.put(p.getName(), p);
-		}
-		
-		// Get properties as map first.
-		Map<String, Object> propsMap = parseProperties(beanProps, prefetched);
-		
-		// Prepare result, using constructor with parameters if available.
-		T result = createBean(beanCls, propsMap);
+    private static final Object END_VALUE = new Object();
 
-		// Set (remaining) properties.
-		for (Map.Entry<String, ?> e: propsMap.entrySet()) {
-			PropertyDescriptor property = beanProps.get(e.getKey());
-			if (property == null) {
-				throw new JsonDecodeException(parser.getCurrentLocation()
-						+ ": No bean property for key " + e.getKey());
-			}
-			setProperty(result, property, e.getValue());
-		}
-		return result;
-	}
+    @SuppressWarnings("unchecked")
+    private <T> T readValue(Class<T> expected)
+            throws JsonDecodeException, IOException {
+        JsonToken token = parser.nextToken();
+        if (token == null) {
+            return null;
+        }
+        switch (token) {
+        case END_ARRAY:
+        case END_OBJECT:
+            return (T) END_VALUE;
+        case VALUE_NULL:
+            return null;
+        case VALUE_FALSE:
+            return (T) Boolean.FALSE;
+        case VALUE_TRUE:
+            return (T) Boolean.TRUE;
+        case VALUE_STRING:
+            PropertyEditor propertyEditor = findPropertyEditor(expected);
+            if (propertyEditor != null) {
+                propertyEditor.setAsText(parser.getText());
+                return (T) propertyEditor.getValue();
+            }
+            if (Enum.class.isAssignableFrom(expected)) {
+                @SuppressWarnings("rawtypes")
+                Class<Enum> enumClass = (Class<Enum>) expected;
+                return (T) Enum.valueOf(enumClass, parser.getText());
+            }
+            // fall through
+        case FIELD_NAME:
+            return (T) parser.getText();
+        case START_ARRAY:
+            if (expected.isArray()
+                || Collection.class.isAssignableFrom(expected)
+                || expected.equals(Object.class)) {
+                return (T) readArrayValue(expected);
+            }
+            throw new JsonDecodeException(parser.getCurrentLocation()
+                + ": Encountered unexpected array.");
+        case START_OBJECT:
+            return readObjectValue(expected);
+        default:
+            if (token.isScalarValue()) {
+                return readNumber(expected);
+            }
+            throw new JsonDecodeException(parser.getCurrentLocation()
+                + ": Unexpected event.");
+        }
+    }
 
-	private <T> T createBean(Class<T> beanCls, Map<String, Object> propsMap)
-			throws JsonDecodeException {
-		try {
-			SortedMap<ConstructorProperties, Constructor<T>> cons
-				= new TreeMap<>(Comparator.comparingInt(
-						(ConstructorProperties cp) -> cp.value().length)
-						.reversed());
-			for (Constructor<?> c : beanCls.getConstructors()) {
-				ConstructorProperties[] allCps = c.getAnnotationsByType(
-				        ConstructorProperties.class);
-				if (allCps.length > 0) {
-					@SuppressWarnings("unchecked")
-					Constructor<T> beanConstructor = (Constructor<T>)c; 
-					cons.put(allCps[0], beanConstructor);
-				}
-			}
-			for (Map.Entry<ConstructorProperties, Constructor<T>> 
-				e: cons.entrySet()) {
-				String[] conProps = e.getKey().value();
-				if (propsMap.keySet().containsAll(Arrays.asList(conProps))) {
-					Object[] args = new Object[conProps.length];
-					for (int i = 0; i < conProps.length; i++) {
-						args[i] = propsMap.remove(conProps[i]);
-					}
-					T result = e.getValue().newInstance(args);
-					return result;
-				}
-			}
-			
-			return beanCls.newInstance();
-		} catch (InstantiationException | IllegalAccessException 
-				| IllegalArgumentException | InvocationTargetException e) {
-			throw new JsonDecodeException(parser.getCurrentLocation()
-			        + ": Cannot create " + beanCls.getName(), e);
-		}
-	}
+    @SuppressWarnings("unchecked")
+    private <T> T readNumber(Class<T> expected) throws IOException {
+        if (expected.equals(Byte.class)
+            || expected.equals(Byte.TYPE)) {
+            return (T) Byte.valueOf((byte) parser.getValueAsInt());
+        }
+        if (expected.equals(Short.class)
+            || expected.equals(Short.TYPE)) {
+            return (T) Short.valueOf((short) parser.getValueAsInt());
+        }
+        if (expected.equals(Integer.class)
+            || expected.equals(Integer.TYPE)) {
+            return (T) Integer.valueOf(parser.getValueAsInt());
+        }
+        if (expected.equals(BigInteger.class)) {
+            return (T) parser.getBigIntegerValue();
+        }
+        if (expected.equals(BigDecimal.class)) {
+            return (T) parser.getDecimalValue();
+        }
+        if (expected.equals(Float.class)
+            || expected.equals(Float.TYPE)) {
+            return (T) Float.valueOf((float) parser.getValueAsDouble());
+        }
+        if (expected.equals(Long.class)
+            || expected.equals(Long.TYPE)
+            || parser.currentToken() == JsonToken.VALUE_NUMBER_INT) {
+            return (T) Long.valueOf(parser.getValueAsLong());
+        }
+        return (T) Double.valueOf(parser.getValueAsDouble());
+    }
 
-	private Map<String, Object> parseProperties(
-	        Map<String, PropertyDescriptor> beanProps, JsonToken prefetched)
-	        throws JsonDecodeException, IOException {
-		Map<String,Object> map = new HashMap<>();
-		whileLoop:
-		while (true) {
-			JsonToken event = prefetched != null ? prefetched : parser.nextToken();
-			prefetched = null; // Consumed.
-			switch(event) {
-			case END_OBJECT:
-				break whileLoop;
-				
-			case FIELD_NAME:
-				String key = parser.getText();
-				PropertyDescriptor property = beanProps.get(key);
-				if (property == null) {
-					throw new JsonDecodeException(parser.getCurrentLocation()
-							+ ": No bean property for key " + key);
-				}
-				Object value = readValue(property.getPropertyType());
-				map.put(key, value);
-				break;
-				
-			default:
-				throw new JsonDecodeException(parser.getCurrentLocation()
-						+ ": Unexpected Json event " + event);
-			}
-		}
-		return map;
-	}
-	
-	private <T> void setProperty(T obj, PropertyDescriptor property,
-	        Object value) throws JsonDecodeException {
-		try {
-			Method writeMethod = property.getWriteMethod();
-			if (writeMethod != null) {
-				writeMethod.invoke(obj, value);
-				return;
-			}
-			Field propField = findField(obj.getClass(), property.getName());
-			if (!propField.isAccessible()) {
-				propField.setAccessible(true);
-			}
-			propField.set(obj, value);
-		} catch (IllegalAccessException | IllegalArgumentException
-		        | InvocationTargetException | NoSuchFieldException e) {
-			throw new JsonDecodeException(parser.getCurrentLocation()
-					+ ": Cannot write property " + property.getName(), e);
-		}
-	}
+    @SuppressWarnings("unchecked")
+    private <T> Object readArrayValue(Class<T> arrayType)
+            throws JsonDecodeException, IOException {
+        Collection<T> items = createCollection(arrayType);
+        Class<?> itemType = Object.class;
+        if (arrayType.isArray()) {
+            itemType = arrayType.getComponentType();
+        }
+        while (true) {
+            T item = (T) readValue(itemType);
+            if (item == END_VALUE) {
+                break;
+            }
+            items.add(item);
+        }
+        if (!arrayType.isArray()) {
+            return items;
+        }
+        Object result = Array.newInstance(itemType, items.size());
+        int index = 0;
+        for (Object o : items) {
+            Array.set(result, index++, o);
+        }
+        return result;
+    }
 
-	private Field findField(Class<?> cls, String fieldName) 
-			throws NoSuchFieldException {
-		if (cls.equals(Object.class)) {
-			throw new NoSuchFieldException();
-		}
-		try {
-			return cls.getDeclaredField(fieldName);
-		} catch (NoSuchFieldException e) {
-			return findField(cls.getSuperclass(), fieldName);
-		}
-	}
+    private <T> Collection<T> createCollection(Class<T> arrayType)
+            throws JsonDecodeException {
+        if (!Collection.class.isAssignableFrom(arrayType)) {
+            @SuppressWarnings("unchecked")
+            Collection<T> result = (Collection<T>) JsonArray.create();
+            return result;
+        }
+        if (arrayType.isInterface()) {
+            // This is how things should be: interface type
+            if (Set.class.isAssignableFrom(arrayType)) {
+                return new HashSet<>();
+            }
+            @SuppressWarnings("unchecked")
+            Collection<T> result = (Collection<T>) JsonArray.create();
+            return result;
+        }
+        // Implementation type, we'll try our best
+        try {
+            @SuppressWarnings("unchecked")
+            Collection<T> result = (Collection<T>) arrayType
+                .getDeclaredConstructor().newInstance();
+            return result;
+        } catch (InstantiationException | IllegalAccessException
+                | IllegalArgumentException | InvocationTargetException
+                | NoSuchMethodException | SecurityException e) {
+            throw new JsonDecodeException(parser.getCurrentLocation()
+                + ": Cannot create " + arrayType.getName(), e);
+        }
+    }
+
+    private <T> T readObjectValue(Class<T> expected)
+            throws JsonDecodeException, IOException {
+        JsonToken prefetched = parser.nextToken();
+        if (!prefetched.equals(JsonToken.FIELD_NAME)
+            && !prefetched.equals(JsonToken.END_OBJECT)) {
+            throw new JsonDecodeException(parser.getCurrentLocation()
+                + ": Unexpected Json event " + prefetched);
+        }
+        Class<?> actualCls = expected;
+        if (prefetched.equals(JsonToken.FIELD_NAME)) {
+            String key = parser.getText();
+            if ("class".equals(key)) {
+                prefetched = null; // Now it's consumed
+                parser.nextToken();
+                String provided = parser.getText();
+                if (aliases.containsKey(provided)) {
+                    actualCls = aliases.get(provided);
+                } else {
+                    actualCls = classConverter.apply(provided)
+                        .orElse(DefaultJsonObject.class);
+                }
+            }
+        }
+        if (!expected.isAssignableFrom(actualCls)) {
+            throw new JsonDecodeException(parser.getCurrentLocation()
+                + ": Expected " + expected.getName()
+                + " found " + actualCls.getName());
+        }
+        if (actualCls.equals(Object.class)) {
+            actualCls = DefaultJsonObject.class;
+        }
+        if (Map.class.isAssignableFrom(actualCls)) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> map = createMapInstance(
+                (Class<Map<String, Object>>) actualCls);
+            objectIntoMap(map, prefetched);
+            @SuppressWarnings("unchecked")
+            T result = (T) map;
+            return result;
+        }
+        @SuppressWarnings("unchecked")
+        Class<T> beanCls = (Class<T>) actualCls;
+        return objectToBean(beanCls, prefetched);
+    }
+
+    private <M extends Map<String, Object>> M createMapInstance(Class<M> mapCls)
+            throws JsonDecodeException {
+        try {
+            return (M) mapCls.getDeclaredConstructor().newInstance();
+        } catch (InstantiationException
+                | IllegalAccessException | IllegalArgumentException
+                | InvocationTargetException | NoSuchMethodException
+                | SecurityException e) {
+            throw new JsonDecodeException(parser.getCurrentLocation()
+                + ": Cannot create " + mapCls.getName(), e);
+        }
+    }
+
+    private void objectIntoMap(Map<String, Object> result, JsonToken prefetched)
+            throws JsonDecodeException, IOException {
+        whileLoop: while (true) {
+            JsonToken event
+                = prefetched != null ? prefetched : parser.nextToken();
+            prefetched = null; // Consumed.
+            switch (event) {
+            case END_OBJECT:
+                break whileLoop;
+
+            case FIELD_NAME:
+                String key = parser.getText();
+                Object value = readValue(Object.class);
+                result.put(key, value);
+                break;
+
+            default:
+                throw new JsonDecodeException(parser.getCurrentLocation()
+                    + ": Unexpected Json event " + event);
+            }
+        }
+    }
+
+    private <T> T objectToBean(Class<T> beanCls, JsonToken prefetched)
+            throws JsonDecodeException, IOException {
+        Map<String, PropertyDescriptor> beanProps = new HashMap<>();
+        BeanInfo beanInfo = findBeanInfo(beanCls);
+        if (beanInfo == null) {
+            throw new JsonDecodeException(parser.getCurrentLocation()
+                + ": Cannot introspect " + beanCls);
+        }
+        for (PropertyDescriptor p : beanInfo.getPropertyDescriptors()) {
+            beanProps.put(p.getName(), p);
+        }
+
+        // Get properties as map first.
+        Map<String, Object> propsMap = parseProperties(beanProps, prefetched);
+
+        // Prepare result, using constructor with parameters if available.
+        T result = createBean(beanCls, propsMap);
+
+        // Set (remaining) properties.
+        for (Map.Entry<String, ?> e : propsMap.entrySet()) {
+            PropertyDescriptor property = beanProps.get(e.getKey());
+            if (property == null) {
+                throw new JsonDecodeException(parser.getCurrentLocation()
+                    + ": No bean property for key " + e.getKey());
+            }
+            setProperty(result, property, e.getValue());
+        }
+        return result;
+    }
+
+    private <T> T createBean(Class<T> beanCls, Map<String, Object> propsMap)
+            throws JsonDecodeException {
+        try {
+            SortedMap<ConstructorProperties, Constructor<T>> cons
+                = new TreeMap<>(Comparator.comparingInt(
+                    (ConstructorProperties cp) -> cp.value().length)
+                    .reversed());
+            for (Constructor<?> c : beanCls.getConstructors()) {
+                ConstructorProperties[] allCps = c.getAnnotationsByType(
+                    ConstructorProperties.class);
+                if (allCps.length > 0) {
+                    @SuppressWarnings("unchecked")
+                    Constructor<T> beanConstructor = (Constructor<T>) c;
+                    cons.put(allCps[0], beanConstructor);
+                }
+            }
+            for (Map.Entry<ConstructorProperties, Constructor<T>> e : cons
+                .entrySet()) {
+                String[] conProps = e.getKey().value();
+                if (propsMap.keySet().containsAll(Arrays.asList(conProps))) {
+                    Object[] args = new Object[conProps.length];
+                    for (int i = 0; i < conProps.length; i++) {
+                        args[i] = propsMap.remove(conProps[i]);
+                    }
+                    T result = e.getValue().newInstance(args);
+                    return result;
+                }
+            }
+
+            return beanCls.getDeclaredConstructor().newInstance();
+        } catch (InstantiationException | IllegalAccessException
+                | IllegalArgumentException | InvocationTargetException
+                | NoSuchMethodException | SecurityException e) {
+            throw new JsonDecodeException(parser.getCurrentLocation()
+                + ": Cannot create " + beanCls.getName(), e);
+        }
+    }
+
+    private Map<String, Object> parseProperties(
+            Map<String, PropertyDescriptor> beanProps, JsonToken prefetched)
+            throws JsonDecodeException, IOException {
+        Map<String, Object> map = new HashMap<>();
+        whileLoop: while (true) {
+            JsonToken event
+                = prefetched != null ? prefetched : parser.nextToken();
+            prefetched = null; // Consumed.
+            switch (event) {
+            case END_OBJECT:
+                break whileLoop;
+
+            case FIELD_NAME:
+                String key = parser.getText();
+                PropertyDescriptor property = beanProps.get(key);
+                if (property == null) {
+                    throw new JsonDecodeException(parser.getCurrentLocation()
+                        + ": No bean property for key " + key);
+                }
+                Object value = readValue(property.getPropertyType());
+                map.put(key, value);
+                break;
+
+            default:
+                throw new JsonDecodeException(parser.getCurrentLocation()
+                    + ": Unexpected Json event " + event);
+            }
+        }
+        return map;
+    }
+
+    @SuppressWarnings("deprecation")
+    private <T> void setProperty(T obj, PropertyDescriptor property,
+            Object value) throws JsonDecodeException {
+        try {
+            Method writeMethod = property.getWriteMethod();
+            if (writeMethod != null) {
+                writeMethod.invoke(obj, value);
+                return;
+            }
+            Field propField = findField(obj.getClass(), property.getName());
+            if (!propField.isAccessible()) {
+                propField.setAccessible(true);
+            }
+            propField.set(obj, value);
+        } catch (IllegalAccessException | IllegalArgumentException
+                | InvocationTargetException | NoSuchFieldException e) {
+            throw new JsonDecodeException(parser.getCurrentLocation()
+                + ": Cannot write property " + property.getName(), e);
+        }
+    }
+
+    private Field findField(Class<?> cls, String fieldName)
+            throws NoSuchFieldException {
+        if (cls.equals(Object.class)) {
+            throw new NoSuchFieldException();
+        }
+        try {
+            return cls.getDeclaredField(fieldName);
+        } catch (NoSuchFieldException e) {
+            return findField(cls.getSuperclass(), fieldName);
+        }
+    }
 }
