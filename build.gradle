@@ -14,6 +14,8 @@ buildscript {
 plugins {
     id 'biz.aQute.bnd.builder' version "5.3.0"
 	id "org.jdrupes.mdoclet" version "1.0.3"
+    id 'org.ajoberstar.grgit' version '4.0.1'
+    id 'org.ajoberstar.git-publish' version '3.0.0'
 }
 
 repositories {
