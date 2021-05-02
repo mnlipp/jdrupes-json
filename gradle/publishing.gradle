@@ -7,7 +7,7 @@ task sourcesJar(type: Jar) {
 
 task javadocJar(type: Jar) {
     dependsOn "java11doc"
-    from javadoc.destinationDir
+    from java11doc.destinationDir
     classifier "javadoc"
 }
 
