@@ -42,6 +42,8 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import javax.management.ObjectName;
+import javax.management.openmbean.CompositeData;
+import javax.management.openmbean.TabularData;
 
 /**
  * Encoder for converting a Java object graph to JSON. Objects may be arrays,
@@ -348,7 +350,6 @@ public class JsonBeanEncoder extends JsonCodec
                 doWriteObject(Array.get(obj, i), compType);
             }
             gen.writeEndArray();
-            ;
             return;
         }
         if (obj instanceof Collection) {
@@ -369,6 +370,29 @@ public class JsonBeanEncoder extends JsonCodec
             }
             gen.writeEndObject();
             return;
+        }
+        if (obj instanceof CompositeData) {
+            CompositeData asCd = ((CompositeData) obj);
+            gen.writeStartObject();
+            gen.writeStringField("class",
+                asCd.getCompositeType().getTypeName());
+            for (String name : asCd.getCompositeType().keySet()) {
+                gen.writeFieldName(name);
+                doWriteObject(asCd.get(name), null);
+            }
+            gen.writeEndObject();
+            return;
+        }
+        if (obj instanceof TabularData) {
+            TabularData asTd = (TabularData) obj;
+            gen.writeStartObject();
+            gen.writeStringField("class", asTd.getTabularType().getTypeName());
+            gen.writeArrayFieldStart("data");
+            for (Object value : asTd.values()) {
+                doWriteObject(value, null);
+            }
+            gen.writeEndArray();
+            gen.writeEndObject();
         }
         BeanInfo beanInfo = findBeanInfo(obj.getClass());
         if (beanInfo != null && beanInfo.getPropertyDescriptors().length > 0) {
