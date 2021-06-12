@@ -33,11 +33,15 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.Collection;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import javax.management.ObjectName;
 
 /**
  * Encoder for converting a Java object graph to JSON. Objects may be arrays,
@@ -134,7 +138,10 @@ import java.util.Set;
  * } 
  * ```
  * 
+ * Values of type {@link Date} are converted to ISO8601 compliant strings.
  * 
+ * Values of type {@link ObjectName} are converted to their canonical 
+ * string representation.
  */
 public class JsonBeanEncoder extends JsonCodec
         implements Flushable, Closeable {
@@ -320,6 +327,15 @@ public class JsonBeanEncoder extends JsonCodec
         if (propertyEditor != null) {
             propertyEditor.setValue(obj);
             gen.writeString(propertyEditor.getAsText());
+            return;
+        }
+        if (obj instanceof Date) {
+            gen.writeString(DateTimeFormatter.ISO_INSTANT.format(
+                ((Date) obj).toInstant().truncatedTo(ChronoUnit.SECONDS)));
+            return;
+        }
+        if (obj instanceof ObjectName) {
+            gen.writeString(((ObjectName) obj).getCanonicalName());
             return;
         }
         if (obj.getClass().isArray()) {

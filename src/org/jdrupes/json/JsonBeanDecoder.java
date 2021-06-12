@@ -33,6 +33,10 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.sql.Date;
+import java.time.Instant;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.TemporalAccessor;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -45,6 +49,8 @@ import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.function.Function;
+import javax.management.MalformedObjectNameException;
+import javax.management.ObjectName;
 import org.jdrupes.json.JsonArray.DefaultJsonArray;
 import org.jdrupes.json.JsonObject.DefaultJsonObject;
 
@@ -74,13 +80,13 @@ import org.jdrupes.json.JsonObject.DefaultJsonObject;
  *    The key/value pairs of the JSON input are interpreted as properties
  *    of the JavaBean and set if the values have been parsed successfully.
  *    The type of the properties are passed as expected types when
- *    parsing the values. 
+ *    parsing the values.
  *    
  *    Constructors with {@link ConstructorProperties}
  *    are used if all required values are available. Else, if no setter is
  *    available for a key/value pair, an attempt
  *    is made to gain access to a private field with the name of the
- *    key and assign the value to that field. Note thatthis  will fail
+ *    key and assign the value to that field. Note that this  will fail
  *    when using Java 9 modules unless you explicitly grant the decoder 
  *    access to private fields. So defining a constructor with
  *    a {@link ConstructorProperties} annotation and all immutable
@@ -254,12 +260,7 @@ public class JsonBeanDecoder extends JsonCodec {
                 propertyEditor.setAsText(parser.getText());
                 return (T) propertyEditor.getValue();
             }
-            if (Enum.class.isAssignableFrom(expected)) {
-                @SuppressWarnings("rawtypes")
-                Class<Enum> enumClass = (Class<Enum>) expected;
-                return (T) Enum.valueOf(enumClass, parser.getText());
-            }
-            // fall through
+            return (T) maybeParse(expected, parser.getText());
         case FIELD_NAME:
             return (T) parser.getText();
         case START_ARRAY:
@@ -279,6 +280,63 @@ public class JsonBeanDecoder extends JsonCodec {
             throw new JsonDecodeException(parser.getCurrentLocation()
                 + ": Unexpected event.");
         }
+    }
+
+    static Map<Class<?>, Class<?>> wrappers = new HashMap<>();
+
+    static {
+        wrappers.put(Boolean.TYPE, Boolean.class);
+        wrappers.put(Character.TYPE, Character.class);
+        wrappers.put(Byte.TYPE, Byte.class);
+        wrappers.put(Short.TYPE, Short.class);
+        wrappers.put(Integer.TYPE, Integer.class);
+        wrappers.put(Long.TYPE, Long.class);
+        wrappers.put(Float.TYPE, Float.class);
+        wrappers.put(Double.TYPE, Double.class);
+        wrappers.put(Void.TYPE, Void.class);
+    }
+
+    private <T> T maybeParse(Class<T> expected, String text) {
+        if (expected.equals(Object.class)
+            || expected.isAssignableFrom(String.class)) {
+            @SuppressWarnings("unchecked")
+            T result = (T) text;
+            return result;
+        }
+        if (Enum.class.isAssignableFrom(expected)) {
+            @SuppressWarnings({ "rawtypes", "unchecked" })
+            Class<Enum> enumClass = (Class<Enum>) expected;
+            @SuppressWarnings("unchecked")
+            T result = (T) Enum.valueOf(enumClass, text);
+            return result;
+        }
+        if (expected.isAssignableFrom(Character.class)
+            || expected.equals(Character.TYPE)) {
+            if (((String) text).length() == 1) {
+                @SuppressWarnings("unchecked")
+                T result = (T) Character.valueOf(((String) text).charAt(0));
+                return result;
+            }
+        }
+        if (expected.isAssignableFrom(Date.class)) {
+            TemporalAccessor parsed
+                = DateTimeFormatter.ISO_INSTANT.parse((String) text);
+            if (parsed != null) {
+                @SuppressWarnings("unchecked")
+                T result = (T) Date.from(Instant.from(parsed));
+                return result;
+            }
+        }
+        if (expected.isAssignableFrom(ObjectName.class)) {
+            try {
+                @SuppressWarnings("unchecked")
+                T result = (T) new ObjectName((String) text);
+                return result;
+            } catch (MalformedObjectNameException e) {
+                throw new IllegalArgumentException();
+            }
+        }
+        throw new IllegalArgumentException();
     }
 
     @SuppressWarnings("unchecked")

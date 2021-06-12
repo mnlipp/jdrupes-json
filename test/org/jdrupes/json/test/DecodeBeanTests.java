@@ -19,13 +19,16 @@
 package org.jdrupes.json.test;
 
 import java.beans.ConstructorProperties;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import javax.management.MalformedObjectNameException;
+import javax.management.ObjectName;
 import org.jdrupes.json.JsonBeanDecoder;
 import org.jdrupes.json.JsonDecodeException;
 import org.jdrupes.json.JsonObject;
 import static org.junit.Assert.*;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class DecodeBeanTests {
 
@@ -195,6 +198,87 @@ public class DecodeBeanTests {
         assertEquals(2, result.getY());
         assertEquals("point", result.getName());
         assertTrue(result.allConstCalled);
+    }
+
+    @Test
+    public void readTestBean() throws JsonDecodeException {
+        String json = "{\"dateProperty\":\"1983-12-17T20:07:12Z\","
+            + "\"intProperty\":42,\"objectNameProperty\":\"org.test"
+            + ":name=item,type=data\"}";
+        TestJavaBean result = JsonBeanDecoder.create(json)
+            .readObject(TestJavaBean.class);
+
+        @SuppressWarnings("deprecation")
+        Date ref = new Date(Date.UTC(83, 11, 17, 20, 07, 12));
+        assertEquals(42, result.getIntProperty());
+        assertEquals(ref, result.getDateProperty());
+        try {
+            assertEquals(new ObjectName("org.test:type=data,name=item"),
+                result.getObjectNameProperty());
+        } catch (MalformedObjectNameException e) {
+            // Ignored, using constant string
+        }
+    }
+
+    public static class TestJavaBeanWoConstructor {
+
+        private int intProperty;
+        private char charProperty;
+        private Date dateProperty;
+        private ObjectName objectNameProperty;
+
+        public int getIntProperty() {
+            return intProperty;
+        }
+
+        public void setIntProperty(int intProperty) {
+            this.intProperty = intProperty;
+        }
+
+        public Date getDateProperty() {
+            return dateProperty;
+        }
+
+        public void setDateProperty(Date dateProperty) {
+            this.dateProperty = dateProperty;
+        }
+
+        public ObjectName getObjectNameProperty() {
+            return objectNameProperty;
+        }
+
+        public void setObjectNameProperty(ObjectName objectNameProperty) {
+            this.objectNameProperty = objectNameProperty;
+        }
+
+        public char getCharProperty() {
+            return charProperty;
+        }
+
+        public void setCharProperty(char charProperty) {
+            this.charProperty = charProperty;
+        }
+
+    }
+
+    @Test
+    public void readTestBean2() throws JsonDecodeException {
+        String json = "{\"dateProperty\":\"1983-12-17T20:07:12Z\","
+            + "\"intProperty\":42,\"objectNameProperty\":\"org.test"
+            + ":name=item,type=data\",\"charProperty\":\"@\"}";
+        TestJavaBeanWoConstructor result = JsonBeanDecoder.create(json)
+            .readObject(TestJavaBeanWoConstructor.class);
+
+        @SuppressWarnings("deprecation")
+        Date ref = new Date(Date.UTC(83, 11, 17, 20, 07, 12));
+        assertEquals(42, result.getIntProperty());
+        assertEquals(ref, result.getDateProperty());
+        try {
+            assertEquals(new ObjectName("org.test:type=data,name=item"),
+                result.getObjectNameProperty());
+        } catch (MalformedObjectNameException e) {
+            // Ignored, using constant string
+        }
     }
 
 }
