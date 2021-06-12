@@ -360,17 +360,6 @@ public class JsonBeanEncoder extends JsonCodec
             gen.writeEndArray();
             return;
         }
-        if (obj instanceof Map) {
-            @SuppressWarnings("unchecked")
-            Map<String, Object> map = (Map<String, Object>) obj;
-            gen.writeStartObject();
-            for (Map.Entry<String, Object> e : map.entrySet()) {
-                gen.writeFieldName(e.getKey());
-                doWriteObject(e.getValue(), null);
-            }
-            gen.writeEndObject();
-            return;
-        }
         if (obj instanceof CompositeData) {
             CompositeData asCd = ((CompositeData) obj);
             gen.writeStartObject();
@@ -383,6 +372,7 @@ public class JsonBeanEncoder extends JsonCodec
             gen.writeEndObject();
             return;
         }
+        // Must be tested before Map because TabularDataSupport implements Map
         if (obj instanceof TabularData) {
             TabularData asTd = (TabularData) obj;
             gen.writeStartObject();
@@ -393,6 +383,17 @@ public class JsonBeanEncoder extends JsonCodec
             }
             gen.writeEndArray();
             gen.writeEndObject();
+        }
+        if (obj instanceof Map) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> map = (Map<String, Object>) obj;
+            gen.writeStartObject();
+            for (Map.Entry<String, Object> e : map.entrySet()) {
+                gen.writeFieldName(e.getKey());
+                doWriteObject(e.getValue(), null);
+            }
+            gen.writeEndObject();
+            return;
         }
         BeanInfo beanInfo = findBeanInfo(obj.getClass());
         if (beanInfo != null && beanInfo.getPropertyDescriptors().length > 0) {
