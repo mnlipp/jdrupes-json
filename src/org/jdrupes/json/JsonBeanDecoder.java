@@ -20,7 +20,6 @@ package org.jdrupes.json;
 
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
-
 import java.beans.BeanInfo;
 import java.beans.ConstructorProperties;
 import java.beans.PropertyDescriptor;
@@ -46,7 +45,6 @@ import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.function.Function;
-
 import org.jdrupes.json.JsonArray.DefaultJsonArray;
 import org.jdrupes.json.JsonObject.DefaultJsonObject;
 

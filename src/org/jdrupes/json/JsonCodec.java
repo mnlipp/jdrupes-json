@@ -19,7 +19,6 @@
 package org.jdrupes.json;
 
 import com.fasterxml.jackson.core.JsonFactory;
-
 import java.beans.BeanInfo;
 import java.beans.IntrospectionException;
 import java.beans.Introspector;
@@ -34,66 +33,66 @@ import java.util.WeakHashMap;
  */
 public abstract class JsonCodec {
 
-	private static JsonFactory defaultFactory = new JsonFactory();
-	
-	protected static JsonFactory defaultFactory() {
-		return defaultFactory;
-	}
+    private static JsonFactory defaultFactory = new JsonFactory();
 
-	private static final Map<Class<?>,PropertyEditor> propertyEditorCache
-		= Collections.synchronizedMap(new WeakHashMap<>());
-	
-	protected static PropertyEditor findPropertyEditor(Class<?> cls) {
-		PropertyEditor propertyEditor = propertyEditorCache.get(cls);
-		if (propertyEditor == null && !propertyEditorCache.containsKey(cls)) {
-			// Never looked for before.
-			propertyEditor = PropertyEditorManager.findEditor(cls);
-			propertyEditorCache.put(cls, propertyEditor);
-		}
-		return propertyEditor;
-	}
-	
-	private static final Map<Class<?>,BeanInfo> beanInfoCache
-		= Collections.synchronizedMap(new WeakHashMap<>());
+    protected static JsonFactory defaultFactory() {
+        return defaultFactory;
+    }
 
-	protected static BeanInfo findBeanInfo(Class<?> cls) {
-		BeanInfo beanInfo = beanInfoCache.get(cls);
-		if (beanInfo == null && !beanInfoCache.containsKey(cls)) {
-			try {
-				beanInfo = Introspector.getBeanInfo(cls, Object.class);
-			} catch (IntrospectionException e) {
-				// Bad luck
-			}
-			beanInfoCache.put(cls, beanInfo);
-		}
-		return beanInfo;
-	}
-	
-	/**
-	 * The encoder and decoder make use of the information from
-	 * {@link PropertyEditorManager#findEditor(Class)} and
-	 * {@link Introspector#getBeanInfo(Class, Class)}. You'd
-	 * expect these methods to provide some caching to speed
-	 * up requests for the same infomration, but they don't.
-	 * 
-	 * The results are therefore kept in an internal cache.
-	 * This cache may, however, become outdated of additional
-	 * classes are loaded into the VM dynamically. This method
-	 * can be used to clear the caches if this is required. 
-	 */
-	public static void clearCaches() {
-		propertyEditorCache.clear();
-		beanInfoCache.clear();
-	}
-	
-	/**
-	 * Add an alias for the given class. If defined, the alias
-	 * will be used instead of the class name by the encoder.
-	 * 
-	 * @param clazz the class
-	 * @param alias the alias
-	 * @return the object for easy chaining
-	 */
-	public abstract JsonCodec addAlias(Class<?> clazz, String alias);
-	
+    private static final Map<Class<?>, PropertyEditor> propertyEditorCache
+        = Collections.synchronizedMap(new WeakHashMap<>());
+
+    protected static PropertyEditor findPropertyEditor(Class<?> cls) {
+        PropertyEditor propertyEditor = propertyEditorCache.get(cls);
+        if (propertyEditor == null && !propertyEditorCache.containsKey(cls)) {
+            // Never looked for before.
+            propertyEditor = PropertyEditorManager.findEditor(cls);
+            propertyEditorCache.put(cls, propertyEditor);
+        }
+        return propertyEditor;
+    }
+
+    private static final Map<Class<?>, BeanInfo> beanInfoCache
+        = Collections.synchronizedMap(new WeakHashMap<>());
+
+    protected static BeanInfo findBeanInfo(Class<?> cls) {
+        BeanInfo beanInfo = beanInfoCache.get(cls);
+        if (beanInfo == null && !beanInfoCache.containsKey(cls)) {
+            try {
+                beanInfo = Introspector.getBeanInfo(cls, Object.class);
+            } catch (IntrospectionException e) {
+                // Bad luck
+            }
+            beanInfoCache.put(cls, beanInfo);
+        }
+        return beanInfo;
+    }
+
+    /**
+     * The encoder and decoder make use of the information from
+     * {@link PropertyEditorManager#findEditor(Class)} and
+     * {@link Introspector#getBeanInfo(Class, Class)}. You'd
+     * expect these methods to provide some caching to speed
+     * up requests for the same infomration, but they don't.
+     * 
+     * The results are therefore kept in an internal cache.
+     * This cache may, however, become outdated of additional
+     * classes are loaded into the VM dynamically. This method
+     * can be used to clear the caches if this is required. 
+     */
+    public static void clearCaches() {
+        propertyEditorCache.clear();
+        beanInfoCache.clear();
+    }
+
+    /**
+     * Add an alias for the given class. If defined, the alias
+     * will be used instead of the class name by the encoder.
+     * 
+     * @param clazz the class
+     * @param alias the alias
+     * @return the object for easy chaining
+     */
+    public abstract JsonCodec addAlias(Class<?> clazz, String alias);
+
 }

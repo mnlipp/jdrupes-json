@@ -19,7 +19,6 @@
 package org.jdrupes.json;
 
 import com.fasterxml.jackson.core.JsonGenerator;
-
 import java.beans.BeanInfo;
 import java.beans.PropertyDescriptor;
 import java.beans.PropertyEditor;
