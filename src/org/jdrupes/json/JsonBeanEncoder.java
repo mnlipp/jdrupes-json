@@ -383,6 +383,7 @@ public class JsonBeanEncoder extends JsonCodec
             }
             gen.writeEndArray();
             gen.writeEndObject();
+            return;
         }
         if (obj instanceof Map) {
             @SuppressWarnings("unchecked")
