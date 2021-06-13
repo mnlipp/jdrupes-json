@@ -43,6 +43,7 @@ import java.util.Map;
 import java.util.Set;
 import javax.management.ObjectName;
 import javax.management.openmbean.CompositeData;
+import javax.management.openmbean.CompositeType;
 import javax.management.openmbean.TabularData;
 
 /**
@@ -362,27 +363,12 @@ public class JsonBeanEncoder extends JsonCodec
         }
         if (obj instanceof CompositeData) {
             CompositeData asCd = ((CompositeData) obj);
-            gen.writeStartObject();
-            gen.writeStringField("class",
-                asCd.getCompositeType().getTypeName());
-            for (String name : asCd.getCompositeType().keySet()) {
-                gen.writeFieldName(name);
-                doWriteObject(asCd.get(name), null);
-            }
-            gen.writeEndObject();
+            writeCompositeData(expectedType, asCd);
             return;
         }
         // Must be tested before Map because TabularDataSupport implements Map
         if (obj instanceof TabularData) {
-            TabularData asTd = (TabularData) obj;
-            gen.writeStartObject();
-            gen.writeStringField("class", asTd.getTabularType().getTypeName());
-            gen.writeArrayFieldStart("data");
-            for (Object value : asTd.values()) {
-                doWriteObject(value, null);
-            }
-            gen.writeEndArray();
-            gen.writeEndObject();
+            writeTabularData((TabularData) obj);
             return;
         }
         if (obj instanceof Map) {
@@ -398,38 +384,99 @@ public class JsonBeanEncoder extends JsonCodec
         }
         BeanInfo beanInfo = findBeanInfo(obj.getClass());
         if (beanInfo != null && beanInfo.getPropertyDescriptors().length > 0) {
-            gen.writeStartObject();
-            if (!obj.getClass().equals(expectedType) && !omitClass) {
-                gen.writeStringField("class", aliases.computeIfAbsent(
-                    obj.getClass(), k -> k.getName()));
-            }
-            for (PropertyDescriptor propDesc : beanInfo
-                .getPropertyDescriptors()) {
-                if (propDesc.getValue("transient") != null) {
-                    continue;
-                }
-                if (excluded.contains(propDesc.getPropertyType().getName())) {
-                    continue;
-                }
-                Method method = propDesc.getReadMethod();
-                if (method == null) {
-                    continue;
-                }
-                try {
-                    Object value = method.invoke(obj);
-                    gen.writeFieldName(propDesc.getName());
-                    doWriteObject(value, propDesc.getPropertyType());
-                    continue;
-                } catch (IllegalAccessException | IllegalArgumentException
-                        | InvocationTargetException e) {
-                    // Bad luck
-                }
-            }
-            gen.writeEndObject();
+            writeJavaBean(obj, expectedType, beanInfo);
             return;
         }
         // Last resort
         gen.writeString(obj.toString());
+    }
+
+    private void writeCompositeData(Class<?> expectedType, CompositeData cd)
+            throws IOException {
+        gen.writeStartObject();
+        // We don't (necessarily) have the Java type mapped to this
+        // CompositeData available. So we suppress writing when
+        // CompositeData is passed as expected type.
+        if (expectedType == null
+            || !CompositeData.class.isAssignableFrom(expectedType)) {
+            gen.writeStringField("class",
+                cd.getCompositeType().getTypeName());
+        }
+        for (String name : cd.getCompositeType().keySet()) {
+            gen.writeFieldName(name);
+            doWriteObject(cd.get(name), null);
+        }
+        gen.writeEndObject();
+    }
+
+    private void writeTabularData(TabularData td) throws IOException {
+        gen.writeStartObject();
+        gen.writeStringField("class", TabularData.class.getName());
+        gen.writeStringField("type", td.getTabularType().getTypeName());
+        gen.writeStringField("description",
+            td.getTabularType().getDescription());
+        gen.writeArrayFieldStart("columns");
+        CompositeType rowType = td.getTabularType().getRowType();
+        for (String column : rowType.keySet()) {
+            gen.writeStartObject();
+            gen.writeObjectField("name", column);
+            gen.writeObjectField("type", rowType.getType(column).getTypeName());
+            gen.writeObjectField("description",
+                rowType.getDescription(column));
+            gen.writeEndObject();
+        }
+        gen.writeEndArray();
+        gen.writeArrayFieldStart("indices");
+        for (String index : td.getTabularType().getIndexNames()) {
+            gen.writeString(index);
+        }
+        gen.writeEndArray();
+
+        gen.writeArrayFieldStart("rows");
+        @SuppressWarnings("unchecked")
+        Collection<CompositeData> rowValues
+            = (Collection<CompositeData>) td.values();
+        for (CompositeData value : rowValues) {
+            gen.writeStartArray();
+            for (String column : rowType.keySet()) {
+                doWriteObject(value.get(column), value.get(column).getClass());
+            }
+            gen.writeEndArray();
+        }
+        gen.writeEndArray();
+        gen.writeEndObject();
+    }
+
+    private void writeJavaBean(Object obj, Class<?> expectedType,
+            BeanInfo beanInfo) throws IOException {
+        gen.writeStartObject();
+        if (!obj.getClass().equals(expectedType) && !omitClass) {
+            gen.writeStringField("class", aliases.computeIfAbsent(
+                obj.getClass(), k -> k.getName()));
+        }
+        for (PropertyDescriptor propDesc : beanInfo
+            .getPropertyDescriptors()) {
+            if (propDesc.getValue("transient") != null) {
+                continue;
+            }
+            if (excluded.contains(propDesc.getPropertyType().getName())) {
+                continue;
+            }
+            Method method = propDesc.getReadMethod();
+            if (method == null) {
+                continue;
+            }
+            try {
+                Object value = method.invoke(obj);
+                gen.writeFieldName(propDesc.getName());
+                doWriteObject(value, propDesc.getPropertyType());
+                continue;
+            } catch (IllegalAccessException | IllegalArgumentException
+                    | InvocationTargetException e) {
+                // Bad luck
+            }
+        }
+        gen.writeEndObject();
     }
 
 }
