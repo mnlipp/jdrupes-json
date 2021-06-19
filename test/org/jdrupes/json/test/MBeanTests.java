@@ -90,12 +90,14 @@ class MBeanTests {
         }
         String result
             = JsonBeanEncoder.create().writeObject(data).toJson();
-        assertEquals("{\"Item\":"
-            + "{\"class\":\"org.jdrupes.json.test.MBeanTests$Item\","
-            + "\"prop1\":3,\"prop2\":4},"
-            + "\"Items\":[{\"class\":\"org.jdrupes.json.test.MBeanTests$Item\","
-            + "\"prop1\":1,\"prop2\":2},{"
-            + "\"class\":\"org.jdrupes.json.test.MBeanTests$Item\","
+        assertEquals("{\"Item\":{\"class\":{\"type\":"
+            + "\"org.jdrupes.json.test.MBeanTests$Item\","
+            + "\"keys\":{\"prop1\":{\"type\":\"java.lang.Integer\"},"
+            + "\"prop2\":{\"type\":\"java.lang.Integer\"}}},"
+            + "\"prop1\":3,\"prop2\":4},\"Items\":"
+            + "[{\"class\":\"org.jdrupes.json.test.MBeanTests$Item\","
+            + "\"prop1\":1,\"prop2\":2},{\"class\":"
+            + "\"org.jdrupes.json.test.MBeanTests$Item\","
             + "\"prop1\":3,\"prop2\":4}]}",
             result);
     }
@@ -121,15 +123,16 @@ class MBeanTests {
 
         String result
             = JsonBeanEncoder.create().writeObject(data).toJson();
-        assertEquals("{\"class\":\"javax.management.openmbean.TabularData\","
-            + "\"type\":\"org.jdrupes.json.TestTable\","
-            + "\"description\":\"Test table\","
-            + "\"columns\":[{\"name\":\"column1\","
-            + "\"type\":\"java.lang.Integer\",\"description\":\"Column 1\"},"
-            + "{\"name\":\"column2\",\"type\":\"java.lang.Integer\","
-            + "\"description\":\"Column 2\"}],"
-            + "\"indices\":[\"column1\",\"column2\"]"
-            + ",\"rows\":[[1,2],[3,4]]}",
+        assertEquals(
+            "{\"class\":{\"type\":\"org.jdrupes.json.TestTable\","
+                + "\"description\":\"Test table\","
+                + "\"columns\":[{\"name\":\"column1\","
+                + "\"type\":\"java.lang.Integer\","
+                + "\"description\":\"Column 1\"},"
+                + "{\"name\":\"column2\",\"type\":\"java.lang.Integer\","
+                + "\"description\":\"Column 2\"}],"
+                + "\"indices\":[\"column1\",\"column2\"]},"
+                + "\"rows\":[[1,2],[3,4]]}",
             result);
     }
 

@@ -44,7 +44,9 @@ import java.util.Set;
 import javax.management.ObjectName;
 import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.CompositeType;
+import javax.management.openmbean.OpenType;
 import javax.management.openmbean.TabularData;
+import javax.management.openmbean.TabularType;
 
 /**
  * Encoder for converting a Java object graph to JSON. Objects may be arrays,
@@ -161,6 +163,7 @@ public class JsonBeanEncoder extends JsonCodec
     private boolean omitClass;
     private JsonGenerator gen;
     private StringWriter writer = null;
+    private Map<String, Boolean> described = new HashMap<>();
 
     @Override
     public JsonBeanEncoder addAlias(Class<?> clazz, String alias) {
@@ -284,7 +287,12 @@ public class JsonBeanEncoder extends JsonCodec
     }
 
     public JsonBeanEncoder writeObject(Object obj) throws IOException {
-        doWriteObject(obj, obj.getClass());
+        if (obj instanceof CompositeData || obj instanceof TabularData) {
+            // Force class description for instances of top level OpenTypes
+            doWriteObject(obj, null);
+        } else {
+            doWriteObject(obj, obj.getClass());
+        }
         return this;
     }
 
@@ -362,13 +370,12 @@ public class JsonBeanEncoder extends JsonCodec
             return;
         }
         if (obj instanceof CompositeData) {
-            CompositeData asCd = ((CompositeData) obj);
-            writeCompositeData(expectedType, asCd);
+            writeCompositeData((CompositeData) obj, expectedType);
             return;
         }
         // Must be tested before Map because TabularDataSupport implements Map
         if (obj instanceof TabularData) {
-            writeTabularData((TabularData) obj);
+            writeTabularData((TabularData) obj, expectedType);
             return;
         }
         if (obj instanceof Map) {
@@ -391,57 +398,114 @@ public class JsonBeanEncoder extends JsonCodec
         gen.writeString(obj.toString());
     }
 
-    private void writeCompositeData(Class<?> expectedType, CompositeData cd)
+    private void writeCompositeData(CompositeData cd, Class<?> expectedType)
             throws IOException {
         gen.writeStartObject();
         // We don't (necessarily) have the Java type mapped to this
-        // CompositeData available. So we suppress writing when
+        // CompositeData available. So we suppress writing if
         // CompositeData is passed as expected type.
-        if (expectedType == null
-            || !CompositeData.class.isAssignableFrom(expectedType)) {
-            gen.writeStringField("class",
-                cd.getCompositeType().getTypeName());
+        if (!omitClass && (expectedType == null
+            || !CompositeData.class.isAssignableFrom(expectedType))) {
+            gen.writeFieldName("class");
+            writeOpenType(cd.getCompositeType());
         }
         for (String name : cd.getCompositeType().keySet()) {
             gen.writeFieldName(name);
-            doWriteObject(cd.get(name), null);
+            // Suppress class entry, type has been fully described already.
+            doWriteObject(cd.get(name), cd.get(name).getClass());
         }
         gen.writeEndObject();
     }
 
-    private void writeTabularData(TabularData td) throws IOException {
+    private void writeTabularData(TabularData td, Class<?> expectedType)
+            throws IOException {
         gen.writeStartObject();
-        gen.writeStringField("class", TabularData.class.getName());
-        gen.writeStringField("type", td.getTabularType().getTypeName());
-        gen.writeStringField("description",
-            td.getTabularType().getDescription());
-        gen.writeArrayFieldStart("columns");
-        CompositeType rowType = td.getTabularType().getRowType();
-        for (String column : rowType.keySet()) {
-            gen.writeStartObject();
-            gen.writeObjectField("name", column);
-            gen.writeObjectField("type", rowType.getType(column).getTypeName());
-            gen.writeObjectField("description",
-                rowType.getDescription(column));
-            gen.writeEndObject();
+        // We don't (necessarily) have the Java type mapped to this
+        // TabularData available. So we suppress writing if
+        // CompositeData is passed as expected type.
+        if (!omitClass && (expectedType == null
+            || !TabularData.class.isAssignableFrom(expectedType))) {
+            gen.writeFieldName("class");
+            writeOpenType(td.getTabularType());
         }
-        gen.writeEndArray();
-        gen.writeArrayFieldStart("indices");
-        for (String index : td.getTabularType().getIndexNames()) {
-            gen.writeString(index);
-        }
-        gen.writeEndArray();
 
         gen.writeArrayFieldStart("rows");
         @SuppressWarnings("unchecked")
         Collection<CompositeData> rowValues
             = (Collection<CompositeData>) td.values();
+        CompositeType rowType = td.getTabularType().getRowType();
         for (CompositeData value : rowValues) {
             gen.writeStartArray();
             for (String column : rowType.keySet()) {
+                // Suppress class entry, type has been fully described already.
                 doWriteObject(value.get(column), value.get(column).getClass());
             }
             gen.writeEndArray();
+        }
+        gen.writeEndArray();
+        gen.writeEndObject();
+    }
+
+    private void writeOpenType(OpenType<?> openType) throws IOException {
+        if (described.getOrDefault(openType.getTypeName(), false)) {
+            gen.writeString(openType.getTypeName());
+            return;
+        }
+        described.put(openType.getTypeName(), true);
+        if (openType instanceof CompositeType) {
+            writeCompositeType((CompositeType) openType);
+            return;
+        }
+        if (openType instanceof TabularType) {
+            writeTabularType((TabularType) openType);
+            return;
+        }
+        gen.writeString(openType.getTypeName());
+    }
+
+    private void writeCompositeType(CompositeType ct) throws IOException {
+        gen.writeStartObject();
+        gen.writeStringField("type", ct.getTypeName());
+        if (!ct.getDescription().equals(ct.getTypeName())) {
+            gen.writeStringField("description", ct.getDescription());
+        }
+        gen.writeObjectFieldStart("keys");
+        for (String key : ct.keySet()) {
+            gen.writeObjectFieldStart(key);
+            gen.writeFieldName("type");
+            writeOpenType(ct.getType(key));
+            if (!ct.getDescription(key).equals(key)) {
+                gen.writeStringField("description", ct.getDescription(key));
+            }
+            gen.writeEndObject();
+        }
+        gen.writeEndObject();
+        gen.writeEndObject();
+    }
+
+    private void writeTabularType(TabularType tt) throws IOException {
+        gen.writeStartObject();
+        gen.writeStringField("type", tt.getTypeName());
+        if (!tt.getDescription().equals(tt.getTypeName())) {
+            gen.writeStringField("description", tt.getDescription());
+        }
+        gen.writeArrayFieldStart("columns");
+        CompositeType rowType = tt.getRowType();
+        for (String column : rowType.keySet()) {
+            gen.writeStartObject();
+            gen.writeObjectField("name", column);
+            gen.writeFieldName("type");
+            writeOpenType(rowType.getType(column));
+            if (!rowType.getDescription(column).equals(column)) {
+                gen.writeObjectField("description",
+                    rowType.getDescription(column));
+            }
+            gen.writeEndObject();
+        }
+        gen.writeEndArray();
+        gen.writeArrayFieldStart("indices");
+        for (String index : tt.getIndexNames()) {
+            gen.writeString(index);
         }
         gen.writeEndArray();
         gen.writeEndObject();
