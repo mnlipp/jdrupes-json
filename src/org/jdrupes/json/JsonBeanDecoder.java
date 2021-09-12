@@ -43,6 +43,8 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -51,6 +53,16 @@ import java.util.TreeMap;
 import java.util.function.Function;
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
+import javax.management.openmbean.ArrayType;
+import javax.management.openmbean.CompositeData;
+import javax.management.openmbean.CompositeDataSupport;
+import javax.management.openmbean.CompositeType;
+import javax.management.openmbean.OpenDataException;
+import javax.management.openmbean.OpenType;
+import javax.management.openmbean.SimpleType;
+import javax.management.openmbean.TabularData;
+import javax.management.openmbean.TabularDataSupport;
+import javax.management.openmbean.TabularType;
 import org.jdrupes.json.JsonArray.DefaultJsonArray;
 import org.jdrupes.json.JsonObject.DefaultJsonObject;
 
@@ -120,6 +132,7 @@ public class JsonBeanDecoder extends JsonCodec {
             }
         };
     private JsonParser parser;
+    private Map<String, OpenType<?>> openTypes;
 
     @Override
     public JsonBeanDecoder addAlias(Class<?> clazz, String alias) {
@@ -185,6 +198,7 @@ public class JsonBeanDecoder extends JsonCodec {
             throw new IllegalArgumentException("Parser may not be null.");
         }
         this.parser = parser;
+        openTypes = new HashMap<>(simpleOpenTypes);
     }
 
     /**
@@ -195,7 +209,7 @@ public class JsonBeanDecoder extends JsonCodec {
      */
     public JsonObject readObject() throws JsonDecodeException {
         try {
-            return readValue(DefaultJsonObject.class);
+            return readValue(DefaultJsonObject.class, null);
         } catch (IOException e) {
             throw new JsonDecodeException(e);
         }
@@ -212,7 +226,7 @@ public class JsonBeanDecoder extends JsonCodec {
      */
     public <T> T readObject(Class<T> expected) throws JsonDecodeException {
         try {
-            return readValue(expected);
+            return readValue(expected, null);
         } catch (IOException e) {
             throw new JsonDecodeException(e);
         }
@@ -229,7 +243,7 @@ public class JsonBeanDecoder extends JsonCodec {
      */
     public <T> T readArray(Class<T> expected) throws JsonDecodeException {
         try {
-            return readValue(expected);
+            return readValue(expected, null);
         } catch (IOException e) {
             throw new JsonDecodeException(e);
         }
@@ -238,7 +252,7 @@ public class JsonBeanDecoder extends JsonCodec {
     private static final Object END_VALUE = new Object();
 
     @SuppressWarnings("unchecked")
-    private <T> T readValue(Class<T> expected)
+    private <T> T readValue(Class<T> expected, OpenType<? extends T> openType)
             throws JsonDecodeException, IOException {
         JsonToken token = parser.nextToken();
         if (token == null) {
@@ -264,10 +278,13 @@ public class JsonBeanDecoder extends JsonCodec {
         case FIELD_NAME:
             return (T) parser.getText();
         case START_ARRAY:
+            if (openType != null && openType instanceof ArrayType) {
+                return (T) readArrayValues((ArrayType<?>) openType);
+            }
             if (expected.isArray()
                 || Collection.class.isAssignableFrom(expected)
                 || expected.equals(Object.class)) {
-                return (T) readArrayValue(expected);
+                return (T) readArrayValues(expected);
             }
             throw new JsonDecodeException(parser.getCurrentLocation()
                 + ": Encountered unexpected array.");
@@ -275,25 +292,14 @@ public class JsonBeanDecoder extends JsonCodec {
             return readObjectValue(expected);
         default:
             if (token.isScalarValue()) {
+                if (openType != null && openType instanceof SimpleType) {
+                    return readNumber(simpleToJavaType(openType));
+                }
                 return readNumber(expected);
             }
             throw new JsonDecodeException(parser.getCurrentLocation()
                 + ": Unexpected event.");
         }
-    }
-
-    static Map<Class<?>, Class<?>> wrappers = new HashMap<>();
-
-    static {
-        wrappers.put(Boolean.TYPE, Boolean.class);
-        wrappers.put(Character.TYPE, Character.class);
-        wrappers.put(Byte.TYPE, Byte.class);
-        wrappers.put(Short.TYPE, Short.class);
-        wrappers.put(Integer.TYPE, Integer.class);
-        wrappers.put(Long.TYPE, Long.class);
-        wrappers.put(Float.TYPE, Float.class);
-        wrappers.put(Double.TYPE, Double.class);
-        wrappers.put(Void.TYPE, Void.class);
     }
 
     private <T> T maybeParse(Class<T> expected, String text) {
@@ -371,25 +377,30 @@ public class JsonBeanDecoder extends JsonCodec {
         return (T) Double.valueOf(parser.getValueAsDouble());
     }
 
-    @SuppressWarnings("unchecked")
-    private <T> Object readArrayValue(Class<T> arrayType)
+    private <T> T readArrayValues(Class<T> arrayType)
             throws JsonDecodeException, IOException {
-        Collection<T> items = createCollection(arrayType);
-        Class<?> itemType = Object.class;
+        Collection<?> items = createCollection(arrayType);
+        Class<?> elementType = Object.class;
         if (arrayType.isArray()) {
-            itemType = arrayType.getComponentType();
+            elementType = arrayType.getComponentType();
         }
         while (true) {
-            T item = (T) readValue(itemType);
+            @SuppressWarnings("unchecked")
+            Object item = readValue((Class<Object>) elementType, null);
             if (item == END_VALUE) {
                 break;
             }
-            items.add(item);
+            @SuppressWarnings("unchecked")
+            Collection<Object> anyItems = (Collection<Object>) items;
+            anyItems.add(item);
         }
         if (!arrayType.isArray()) {
-            return items;
+            @SuppressWarnings("unchecked")
+            T typedItems = (T) items;
+            return typedItems;
         }
-        Object result = Array.newInstance(itemType, items.size());
+        @SuppressWarnings("unchecked")
+        T result = (T) Array.newInstance(elementType, items.size());
         int index = 0;
         for (Object o : items) {
             Array.set(result, index++, o);
@@ -397,28 +408,57 @@ public class JsonBeanDecoder extends JsonCodec {
         return result;
     }
 
-    private <T> Collection<T> createCollection(Class<T> arrayType)
+    private <T> T readArrayValues(ArrayType<T> arrayOpenType)
+            throws JsonDecodeException, IOException {
+        Collection<?> items = new ArrayList<>();
+        OpenType<?> elementType = arrayOpenType.getElementOpenType();
+        while (true) {
+            Object item = readValue(Object.class, elementType);
+            if (item == END_VALUE) {
+                break;
+            }
+            @SuppressWarnings("unchecked")
+            Collection<Object> anyItems = (Collection<Object>) items;
+            anyItems.add(item);
+        }
+        T result = null;
+        if (arrayOpenType.isPrimitiveArray()) {
+            @SuppressWarnings("unchecked")
+            T res = (T) createPrimitiveArray(
+                simpleToJavaType(arrayOpenType.getElementOpenType()),
+                items.size());
+            result = res;
+        }
+        if (result == null) {
+            @SuppressWarnings("unchecked")
+            T res = (T) Array.newInstance(
+                simpleToJavaType(arrayOpenType.getElementOpenType()),
+                items.size());
+            result = res;
+        }
+        int index = 0;
+        for (Object o : items) {
+            Array.set(result, index++, o);
+        }
+        return result;
+    }
+
+    private <T> Collection<?> createCollection(Class<T> arrayType)
             throws JsonDecodeException {
         if (!Collection.class.isAssignableFrom(arrayType)) {
-            @SuppressWarnings("unchecked")
-            Collection<T> result = (Collection<T>) JsonArray.create();
-            return result;
+            return (Collection<?>) JsonArray.create();
         }
         if (arrayType.isInterface()) {
             // This is how things should be: interface type
             if (Set.class.isAssignableFrom(arrayType)) {
                 return new HashSet<>();
             }
-            @SuppressWarnings("unchecked")
-            Collection<T> result = (Collection<T>) JsonArray.create();
-            return result;
+            return (Collection<?>) JsonArray.create();
         }
         // Implementation type, we'll try our best
         try {
-            @SuppressWarnings("unchecked")
-            Collection<T> result = (Collection<T>) arrayType
-                .getDeclaredConstructor().newInstance();
-            return result;
+            return (Collection<?>) arrayType.getDeclaredConstructor()
+                .newInstance();
         } catch (InstantiationException | IllegalAccessException
                 | IllegalArgumentException | InvocationTargetException
                 | NoSuchMethodException | SecurityException e) {
@@ -440,8 +480,19 @@ public class JsonBeanDecoder extends JsonCodec {
             String key = parser.getText();
             if ("class".equals(key)) {
                 prefetched = null; // Now it's consumed
-                parser.nextToken();
-                String provided = parser.getText();
+                OpenType<?> openType = null;
+                String provided = null;
+                if (parser.nextToken() == JsonToken.START_OBJECT) {
+                    openType = readOpenType();
+                } else {
+                    provided = parser.getText();
+                    openType = openTypes.get(provided);
+                }
+                if (openType != null) {
+                    @SuppressWarnings("unchecked")
+                    OpenType<T> narrowed = (OpenType<T>) openType;
+                    return readOpenTypeValues(expected, narrowed);
+                }
                 if (aliases.containsKey(provided)) {
                     actualCls = aliases.get(provided);
                 } else {
@@ -497,7 +548,7 @@ public class JsonBeanDecoder extends JsonCodec {
 
             case FIELD_NAME:
                 String key = parser.getText();
-                Object value = readValue(Object.class);
+                Object value = readValue(Object.class, null);
                 result.put(key, value);
                 break;
 
@@ -595,7 +646,7 @@ public class JsonBeanDecoder extends JsonCodec {
                     throw new JsonDecodeException(parser.getCurrentLocation()
                         + ": No bean property for key " + key);
                 }
-                Object value = readValue(property.getPropertyType());
+                Object value = readValue(property.getPropertyType(), null);
                 map.put(key, value);
                 break;
 
@@ -639,4 +690,328 @@ public class JsonBeanDecoder extends JsonCodec {
             return findField(cls.getSuperclass(), fieldName);
         }
     }
+
+    private OpenType<?> readOpenType()
+            throws IOException, JsonDecodeException {
+        String type = null;
+        String description = null;
+        List<CompositeItem> items = null;
+        String elementType = null;
+        int dimension = 0;
+        CompositeType rowType = null;
+        String[] indices = null;
+
+        if (parser.currentToken() == JsonToken.VALUE_STRING) {
+            OpenType<?> result = openTypes.get(parser.getText());
+            if (result != null) {
+                return result;
+            }
+            throw new JsonDecodeException(parser.getCurrentLocation()
+                + ": reference to unknown type: " + parser.getText() + ".");
+        }
+        if (parser.currentToken() != JsonToken.START_OBJECT) {
+            throw new JsonDecodeException(parser.getCurrentLocation()
+                + ": value of type must be definition or valid reference.");
+        }
+        while (true) {
+            JsonToken token = parser.nextToken();
+            if (token == null) {
+                throw new JsonDecodeException(parser.getCurrentLocation()
+                    + ": Unexpected end of input.");
+            }
+            switch (token) {
+            case END_OBJECT:
+                if (items != null) {
+                    return createCompositeDefinition(type, items, description);
+                }
+                if (rowType != null) {
+                    try {
+                        return new TabularType(type, description, rowType,
+                            indices);
+                    } catch (OpenDataException e) {
+                        throw new JsonDecodeException(
+                            parser.getCurrentLocation()
+                                + ": Cannot create OpenType.",
+                            e);
+                    }
+                }
+                if (elementType != null) {
+                    return createArrayDefintion(type, elementType, dimension);
+                }
+                OpenType<?> result = openTypes.get(type);
+                if (result == null) {
+                    throw new JsonDecodeException(parser.getCurrentLocation()
+                        + ": reference to unknown type: " + type + ".");
+                }
+                return result;
+            case FIELD_NAME:
+                switch (parser.getText()) {
+                case "type":
+                    if (parser.nextToken() == JsonToken.VALUE_STRING) {
+                        type = parser.getText();
+                    } else {
+                        type = readOpenType().getTypeName();
+                    }
+                    if (description == null) {
+                        description = type;
+                    }
+                    break;
+                case "description":
+                    description = parser.nextTextValue();
+                    break;
+                case "keys":
+                    items = readCompositeTypeItems();
+                    break;
+                case "elementType":
+                    elementType = parser.nextTextValue();
+                    break;
+                case "dimension":
+                    dimension = parser.nextIntValue(1);
+                    break;
+                case "row":
+                    rowType = createCompositeType("Row",
+                        readCompositeTypeItems(), "Tabular data row");
+                    break;
+                case "indices":
+                    indices = readArray(String[].class);
+                    break;
+                default:
+                    throw new JsonDecodeException(parser.getCurrentLocation()
+                        + ": Invalid OpenType description.");
+                }
+                break;
+            default:
+                throw new JsonDecodeException(parser.getCurrentLocation()
+                    + ": Unexpected event.");
+            }
+        }
+    }
+
+    private OpenType<?> createCompositeDefinition(String type,
+            List<CompositeItem> items, String description)
+            throws JsonDecodeException {
+        OpenType<?> openType = createCompositeType(type, items, description);
+        openTypes.put(type, openType);
+        return openType;
+    }
+
+    private CompositeType createCompositeType(String type,
+            List<CompositeItem> items, String description)
+            throws JsonDecodeException {
+        try {
+            String[] itemNames = new String[items.size()];
+            String[] itemDescriptions = new String[items.size()];
+            OpenType<?>[] itemTypes = new OpenType<?>[items.size()];
+
+            int index = 0;
+            for (CompositeItem item : items) {
+                itemNames[index] = item.name;
+                itemTypes[index] = item.type;
+                itemDescriptions[index] = item.description;
+                index += 1;
+            }
+            return new CompositeType(type, description,
+                itemNames, itemDescriptions, itemTypes);
+        } catch (OpenDataException e) {
+            throw new JsonDecodeException(parser.getCurrentLocation()
+                + ": Cannot create OpenType.", e);
+        }
+    }
+
+    private OpenType<?> createArrayDefintion(String type, String elementType,
+            int dimension) throws JsonDecodeException {
+        try {
+            ArrayType<?> openType = null;
+            Class<?> wrapper = primitiveNameToWrapper.get(elementType);
+            if (wrapper != null) {
+                // Primitive type
+                openType = new ArrayType<>(
+                    simpleOpenTypes.get(wrapper.getName()), true);
+                if (dimension > 1) {
+                    openType = new ArrayType<>(dimension - 1, openType);
+                }
+            } else {
+                openType
+                    = new ArrayType<>(dimension, openTypes.get(elementType));
+            }
+            openTypes.put(type, openType);
+            return openType;
+        } catch (OpenDataException e) {
+            throw new JsonDecodeException(parser.getCurrentLocation()
+                + ": Cannot create OpenType.", e);
+        }
+    }
+
+    private static class CompositeItem {
+        public String name;
+        public String description;
+        public OpenType<?> type;
+    }
+
+    private List<CompositeItem> readCompositeTypeItems()
+            throws IOException, JsonDecodeException {
+        List<CompositeItem> result = new ArrayList<>();
+        JsonToken token = parser.nextToken();
+        if (!token.equals(JsonToken.START_OBJECT)) {
+            throw new JsonDecodeException(parser.getCurrentLocation()
+                + ": Expect start of object.");
+        }
+        CompositeItem item = null;
+        while (true) {
+            token = parser.nextToken();
+            if (token == null) {
+                throw new JsonDecodeException(parser.getCurrentLocation()
+                    + ": Unexpected end of input.");
+            }
+            switch (token) {
+            case END_OBJECT:
+                return result;
+            case FIELD_NAME:
+                item = new CompositeItem();
+                item.name = parser.getText();
+                item.description = item.name; // Fallback
+                if (parser.nextToken() != JsonToken.START_OBJECT) {
+                    throw new JsonDecodeException(parser.getCurrentLocation()
+                        + ": Expecting composite type item description.");
+                }
+                readCompositeTypeItem(item);
+                result.add(item);
+                break;
+            default:
+                throw new JsonDecodeException(parser.getCurrentLocation()
+                    + ": Unexpected event.");
+            }
+        }
+    }
+
+    private void readCompositeTypeItem(CompositeItem item)
+            throws IOException, JsonDecodeException {
+        while (true) {
+            JsonToken token = parser.nextToken();
+            if (token == null) {
+                throw new JsonDecodeException(parser.getCurrentLocation()
+                    + ": Unexpected end of input.");
+            }
+            switch (token) {
+            case END_OBJECT:
+                return;
+            case FIELD_NAME:
+                switch (parser.getText()) {
+                case "type":
+                    parser.nextToken();
+                    item.type = readOpenType();
+                    break;
+                case "description":
+                    item.description = parser.nextTextValue();
+                    break;
+                default:
+                    throw new JsonDecodeException(parser.getCurrentLocation()
+                        + ": unexpected key in composite type item description.");
+                }
+                break;
+            default:
+                throw new JsonDecodeException(parser.getCurrentLocation()
+                    + ": Unexpected event.");
+            }
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private <T> T readOpenTypeValues(Class<T> expected, OpenType<T> openType)
+            throws JsonDecodeException, IOException {
+        if (openType instanceof CompositeType) {
+            return (T) readCompositeData((CompositeType) openType);
+        }
+        if (openType instanceof TabularType) {
+            return (T) readTabularData((TabularType) openType);
+        }
+        return null;
+    }
+
+    private CompositeData readCompositeData(CompositeType type)
+            throws JsonDecodeException, IOException {
+        Map<String, Object> asMap = new HashMap<>();
+        while (true) {
+            JsonToken event = parser.nextToken();
+            switch (event) {
+            case END_OBJECT:
+                try {
+                    return new CompositeDataSupport(type, asMap);
+                } catch (OpenDataException e) {
+                    throw new JsonDecodeException(parser.getCurrentLocation()
+                        + ": Cannot create OpenType.", e);
+                }
+
+            case FIELD_NAME:
+                String key = parser.getText();
+                OpenType<?> itemType = type.getType(key);
+                Object value = readValue(Object.class, itemType);
+                asMap.put(key, value);
+                break;
+
+            default:
+                throw new JsonDecodeException(parser.getCurrentLocation()
+                    + ": Unexpected Json event " + event);
+            }
+        }
+    }
+
+    private TabularData readTabularData(TabularType openType)
+            throws IOException, JsonDecodeException {
+        JsonToken event = parser.nextToken();
+        if (event != JsonToken.FIELD_NAME || !parser.getText().equals("rows")) {
+            throw new JsonDecodeException(parser.getCurrentLocation()
+                + ": Unexpected Json event " + event);
+        }
+        event = parser.nextToken();
+        if (event != JsonToken.START_ARRAY) {
+            throw new JsonDecodeException(parser.getCurrentLocation()
+                + ": Unexpected Json event " + event);
+        }
+        TabularDataSupport data = new TabularDataSupport(openType);
+        while (true) {
+            CompositeData row = readTabularDataRow(openType);
+            if (row == null) {
+                break;
+            }
+            data.put(row);
+        }
+        event = parser.nextToken();
+        if (event != JsonToken.END_OBJECT) {
+            throw new JsonDecodeException(parser.getCurrentLocation()
+                + ": Unexpected Json event " + event);
+        }
+        return data;
+    }
+
+    private CompositeData readTabularDataRow(TabularType tabularType)
+            throws JsonDecodeException, IOException {
+        JsonToken event = parser.nextToken();
+        if (event == JsonToken.END_ARRAY) {
+            return null;
+        }
+        if (event != JsonToken.START_ARRAY) {
+            throw new JsonDecodeException(parser.getCurrentLocation()
+                + ": Unexpected Json event " + event);
+        }
+        Map<String, Object> items = new HashMap<>();
+        Iterator<String> fields = tabularType.getRowType().keySet().iterator();
+        while (fields.hasNext()) {
+            String field = fields.next();
+            items.put(field, readValue(Object.class,
+                tabularType.getRowType().getType(field)));
+        }
+        event = parser.nextToken();
+        if (event != JsonToken.END_ARRAY) {
+            throw new JsonDecodeException(parser.getCurrentLocation()
+                + ": Unexpected Json event " + event);
+        }
+        try {
+            return new CompositeDataSupport(tabularType.getRowType(), items);
+        } catch (OpenDataException e) {
+            throw new JsonDecodeException(parser.getCurrentLocation()
+                + ": Cannot create OpenType.", e);
+        }
+    }
+
 }

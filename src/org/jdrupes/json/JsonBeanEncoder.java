@@ -42,6 +42,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import javax.management.ObjectName;
+import javax.management.openmbean.ArrayType;
 import javax.management.openmbean.CompositeData;
 import javax.management.openmbean.CompositeType;
 import javax.management.openmbean.OpenType;
@@ -446,30 +447,95 @@ public class JsonBeanEncoder extends JsonCodec
         gen.writeEndObject();
     }
 
-    private void writeOpenType(OpenType<?> openType) throws IOException {
-        if (described.getOrDefault(openType.getTypeName(), false)) {
-            gen.writeString(openType.getTypeName());
-            return;
+    private boolean writeTypeNameReference(String typeName)
+            throws IOException {
+        if (described.getOrDefault(typeName, false)) {
+            gen.writeString(typeName);
+            return true;
         }
-        described.put(openType.getTypeName(), true);
+        // Will (!) happen.
+        described.put(typeName, true);
+        return false;
+    }
+
+    private void writeOpenType(OpenType<?> openType)
+            throws IOException {
         if (openType instanceof CompositeType) {
-            writeCompositeType((CompositeType) openType);
+            writeOpenType((CompositeType) openType);
             return;
         }
         if (openType instanceof TabularType) {
-            writeTabularType((TabularType) openType);
+            writeOpenType((TabularType) openType);
+            return;
+        }
+        if (openType instanceof ArrayType) {
+            writeOpenType((ArrayType<?>) openType);
             return;
         }
         gen.writeString(openType.getTypeName());
     }
 
-    private void writeCompositeType(CompositeType ct) throws IOException {
+    private void writeOpenType(CompositeType ct) throws IOException {
+        if (writeTypeNameReference(ct.getTypeName())) {
+            return;
+        }
         gen.writeStartObject();
         gen.writeStringField("type", ct.getTypeName());
         if (!ct.getDescription().equals(ct.getTypeName())) {
             gen.writeStringField("description", ct.getDescription());
         }
         gen.writeObjectFieldStart("keys");
+        writeCompositeTypeFields(ct);
+        gen.writeEndObject();
+        gen.writeEndObject();
+    }
+
+    private void writeOpenType(TabularType tt) throws IOException {
+        if (writeTypeNameReference(tt.getTypeName())) {
+            return;
+        }
+        gen.writeStartObject();
+        gen.writeStringField("type", tt.getTypeName());
+        if (!tt.getDescription().equals(tt.getTypeName())) {
+            gen.writeStringField("description", tt.getDescription());
+        }
+        gen.writeObjectFieldStart("row");
+        writeCompositeTypeFields(tt.getRowType());
+        gen.writeEndObject();
+        gen.writeArrayFieldStart("indices");
+        for (String index : tt.getIndexNames()) {
+            gen.writeString(index);
+        }
+        gen.writeEndArray();
+        gen.writeEndObject();
+    }
+
+    private void writeOpenType(ArrayType<?> at) throws IOException {
+        String elementType = at.getElementOpenType().getTypeName();
+        if (at.isPrimitiveArray()) {
+            elementType = wrapperNameToPrimitive.get(elementType).getTypeName();
+        }
+        StringBuilder type = new StringBuilder(elementType);
+        for (int i = 0; i < at.getDimension(); i++) {
+            type.append("[]");
+        }
+        if (writeTypeNameReference(type.toString())) {
+            return;
+        }
+        gen.writeStartObject();
+        gen.writeStringField("type", type.toString());
+        gen.writeFieldName("elementType");
+        if (at.isPrimitiveArray()) {
+            gen.writeString(elementType);
+        } else {
+            writeOpenType(at.getElementOpenType());
+        }
+        gen.writeNumberField("dimension", at.getDimension());
+        gen.writeStringField("description", at.getDescription());
+        gen.writeEndObject();
+    }
+
+    private void writeCompositeTypeFields(CompositeType ct) throws IOException {
         for (String key : ct.keySet()) {
             gen.writeObjectFieldStart(key);
             gen.writeFieldName("type");
@@ -479,36 +545,6 @@ public class JsonBeanEncoder extends JsonCodec
             }
             gen.writeEndObject();
         }
-        gen.writeEndObject();
-        gen.writeEndObject();
-    }
-
-    private void writeTabularType(TabularType tt) throws IOException {
-        gen.writeStartObject();
-        gen.writeStringField("type", tt.getTypeName());
-        if (!tt.getDescription().equals(tt.getTypeName())) {
-            gen.writeStringField("description", tt.getDescription());
-        }
-        gen.writeArrayFieldStart("columns");
-        CompositeType rowType = tt.getRowType();
-        for (String column : rowType.keySet()) {
-            gen.writeStartObject();
-            gen.writeObjectField("name", column);
-            gen.writeFieldName("type");
-            writeOpenType(rowType.getType(column));
-            if (!rowType.getDescription(column).equals(column)) {
-                gen.writeObjectField("description",
-                    rowType.getDescription(column));
-            }
-            gen.writeEndObject();
-        }
-        gen.writeEndArray();
-        gen.writeArrayFieldStart("indices");
-        for (String index : tt.getIndexNames()) {
-            gen.writeString(index);
-        }
-        gen.writeEndArray();
-        gen.writeEndObject();
     }
 
     private void writeJavaBean(Object obj, Class<?> expectedType,
