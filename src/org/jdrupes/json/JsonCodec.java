@@ -139,7 +139,7 @@ public abstract class JsonCodec {
     /**
      * Maps the name of a primitive type to the wrapper type.
      */
-    protected static final Map<String, Class<?>> primitiveNameToWrapper
+    private static final Map<String, Class<?>> primitiveNameToWrapper
         = new HashMap<>();
 
     static {
@@ -147,6 +147,10 @@ public abstract class JsonCodec {
             primitiveNameToWrapper.put(w2p.getValue().getTypeName(),
                 w2p.getKey());
         }
+    }
+
+    protected Class<?> primitiveNameToWrapper(String name) {
+        return primitiveNameToWrapper.get(name);
     }
 
     protected Object createPrimitiveArray(Class<?> type, int size) {

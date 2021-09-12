@@ -822,7 +822,7 @@ public class JsonBeanDecoder extends JsonCodec {
             int dimension) throws JsonDecodeException {
         try {
             ArrayType<?> openType = null;
-            Class<?> wrapper = primitiveNameToWrapper.get(elementType);
+            Class<?> wrapper = primitiveNameToWrapper(elementType);
             if (wrapper != null) {
                 // Primitive type
                 openType = new ArrayType<>(
