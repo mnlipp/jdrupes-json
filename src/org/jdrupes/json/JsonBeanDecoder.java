@@ -66,6 +66,7 @@ import javax.management.openmbean.TabularType;
 import org.jdrupes.json.JsonArray.DefaultJsonArray;
 import org.jdrupes.json.JsonObject.DefaultJsonObject;
 
+// TODO: Auto-generated Javadoc
 /**
  * Decoder for converting JSON to a Java object graph. The decoding
  * is based on the expected type passed to the decode method.
@@ -120,20 +121,31 @@ import org.jdrupes.json.JsonObject.DefaultJsonObject;
  *  return a result, a {@link JsonObject} is used as container for 
  *  the values provided by the JSON object.
  */
+@SuppressWarnings({ "PMD.CouplingBetweenObjects", "PMD.CyclomaticComplexity",
+    "PMD.TooManyMethods", "PMD.AvoidDuplicateLiterals",
+    "PMD.DataflowAnomalyAnalysis" })
 public class JsonBeanDecoder extends JsonCodec {
 
-    private Map<String, Class<?>> aliases = new HashMap<>();
-    private Function<String, Optional<Class<?>>> classConverter
-        = name -> {
-            try {
-                return Optional.ofNullable(Class.forName(name));
-            } catch (ClassNotFoundException e) {
-                return Optional.empty();
-            }
-        };
-    private JsonParser parser;
-    private Map<String, OpenType<?>> openTypes;
+    private static final Object END_VALUE = new Object();
+    @SuppressWarnings("PMD.UseConcurrentHashMap")
+    private final Map<String, Class<?>> aliases = new HashMap<>();
+    private Function<String, Optional<Class<
+            ?>>> classConverter = name -> {
+                try {
+                    return Optional.ofNullable(Class.forName(name));
+                } catch (ClassNotFoundException e) {
+                    return Optional.empty();
+                }
+            };
+    private final JsonParser parser;
+    private final Map<String, OpenType<?>> openTypes;
 
+    /*
+     * (non-Javadoc)
+     * 
+     * @see org.jdrupes.json.JsonCodec#addAlias(java.lang.Class,
+     * java.lang.String)
+     */
     @Override
     public JsonBeanDecoder addAlias(Class<?> clazz, String alias) {
         aliases.put(alias, clazz);
@@ -148,6 +160,7 @@ public class JsonBeanDecoder extends JsonCodec {
      * @param converter the converter to use
      * @return the conversion result
      */
+    @SuppressWarnings("PMD.LinguisticNaming")
     public JsonBeanDecoder setClassConverter(
             Function<String, Optional<Class<?>>> converter) {
         this.classConverter = converter;
@@ -157,12 +170,12 @@ public class JsonBeanDecoder extends JsonCodec {
     /**
      * Create a new decoder using a default {@link JsonParser}. 
      * 
-     * @param in the source
+     * @param input the source
      * @return the decoder
      */
-    public static JsonBeanDecoder create(Reader in) {
+    public static JsonBeanDecoder create(Reader input) {
         try {
-            return new JsonBeanDecoder(defaultFactory().createParser(in));
+            return new JsonBeanDecoder(defaultFactory().createParser(input));
         } catch (IOException e) {
             throw new IllegalArgumentException(e);
         }
@@ -193,19 +206,24 @@ public class JsonBeanDecoder extends JsonCodec {
         return new JsonBeanDecoder(parser);
     }
 
+    /**
+     * Create a new decoder using the given parser. 
+     *
+     * @param parser the parser
+     */
     public JsonBeanDecoder(JsonParser parser) {
         if (parser == null) {
             throw new IllegalArgumentException("Parser may not be null.");
         }
         this.parser = parser;
-        openTypes = new HashMap<>(simpleOpenTypes);
+        openTypes = new HashMap<>(simpleOpenTypesMap());
     }
 
     /**
      * Read a JSON object description into a new {@link JsonObject}.
-     * 
+     *
      * @return the object
-     * @throws JsonDecodeException
+     * @throws JsonDecodeException the json decode exception
      */
     public JsonObject readObject() throws JsonDecodeException {
         try {
@@ -219,10 +237,11 @@ public class JsonBeanDecoder extends JsonCodec {
      * Read a JSON object description into a new object of the
      * expected type. The result may have a type derived from
      * the expected type if the JSON read has a `class` key.
-     * 
+     *
+     * @param <T> the generic type
      * @param expected the expected type
      * @return the result
-     * @throws JsonDecodeException
+     * @throws JsonDecodeException the json decode exception
      */
     public <T> T readObject(Class<T> expected) throws JsonDecodeException {
         try {
@@ -239,7 +258,7 @@ public class JsonBeanDecoder extends JsonCodec {
      * @param <T> the generic type
      * @param expected the expected type
      * @return the result
-     * @throws JsonDecodeException
+     * @throws JsonDecodeException the json decode exception
      */
     public <T> T readArray(Class<T> expected) throws JsonDecodeException {
         try {
@@ -249,9 +268,8 @@ public class JsonBeanDecoder extends JsonCodec {
         }
     }
 
-    private static final Object END_VALUE = new Object();
-
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({ "unchecked", "PMD.CognitiveComplexity",
+        "PMD.NcssCount" })
     private <T> T readValue(Class<T> expected, OpenType<? extends T> openType)
             throws JsonDecodeException, IOException {
         JsonToken token = parser.nextToken();
@@ -278,7 +296,7 @@ public class JsonBeanDecoder extends JsonCodec {
         case FIELD_NAME:
             return (T) parser.getText();
         case START_ARRAY:
-            if (openType != null && openType instanceof ArrayType) {
+            if (openType instanceof ArrayType) {
                 return (T) readArrayValues((ArrayType<?>) openType);
             }
             if (expected.isArray()
@@ -292,7 +310,7 @@ public class JsonBeanDecoder extends JsonCodec {
             return readObjectValue(expected);
         default:
             if (token.isScalarValue()) {
-                if (openType != null && openType instanceof SimpleType) {
+                if (openType instanceof SimpleType) {
                     return readNumber(simpleToJavaType(openType));
                 }
                 return readNumber(expected);
@@ -316,13 +334,12 @@ public class JsonBeanDecoder extends JsonCodec {
             T result = (T) Enum.valueOf(enumClass, text);
             return result;
         }
-        if (expected.isAssignableFrom(Character.class)
-            || expected.equals(Character.TYPE)) {
-            if (((String) text).length() == 1) {
-                @SuppressWarnings("unchecked")
-                T result = (T) Character.valueOf(((String) text).charAt(0));
-                return result;
-            }
+        if ((expected.isAssignableFrom(Character.class)
+            || expected.equals(Character.TYPE))
+            && ((String) text).length() == 1) {
+            @SuppressWarnings("unchecked")
+            T result = (T) Character.valueOf(((String) text).charAt(0));
+            return result;
         }
         if (expected.isAssignableFrom(Date.class)) {
             TemporalAccessor parsed
@@ -339,13 +356,13 @@ public class JsonBeanDecoder extends JsonCodec {
                 T result = (T) new ObjectName((String) text);
                 return result;
             } catch (MalformedObjectNameException e) {
-                throw new IllegalArgumentException();
+                throw new IllegalArgumentException(e);
             }
         }
         throw new IllegalArgumentException();
     }
 
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({ "unchecked", "PMD.NPathComplexity" })
     private <T> T readNumber(Class<T> expected) throws IOException {
         if (expected.equals(Byte.class)
             || expected.equals(Byte.TYPE)) {
@@ -467,6 +484,7 @@ public class JsonBeanDecoder extends JsonCodec {
         }
     }
 
+    @SuppressWarnings("PMD.CognitiveComplexity")
     private <T> T readObjectValue(Class<T> expected)
             throws JsonDecodeException, IOException {
         JsonToken prefetched = parser.nextToken();
@@ -480,7 +498,7 @@ public class JsonBeanDecoder extends JsonCodec {
             String key = parser.getText();
             if ("class".equals(key)) {
                 prefetched = null; // Now it's consumed
-                OpenType<?> openType = null;
+                OpenType<?> openType;
                 String provided = null;
                 if (parser.nextToken() == JsonToken.START_OBJECT) {
                     openType = readOpenType();
@@ -491,7 +509,7 @@ public class JsonBeanDecoder extends JsonCodec {
                 if (openType != null) {
                     @SuppressWarnings("unchecked")
                     OpenType<T> narrowed = (OpenType<T>) openType;
-                    return readOpenTypeValues(expected, narrowed);
+                    return readOpenTypeValues(narrowed);
                 }
                 if (aliases.containsKey(provided)) {
                     actualCls = aliases.get(provided);
@@ -539,8 +557,9 @@ public class JsonBeanDecoder extends JsonCodec {
     private void objectIntoMap(Map<String, Object> result, JsonToken prefetched)
             throws JsonDecodeException, IOException {
         whileLoop: while (true) {
+            @SuppressWarnings("PMD.ConfusingTernary")
             JsonToken event
-                = prefetched != null ? prefetched : parser.nextToken();
+                = (prefetched != null) ? prefetched : parser.nextToken();
             prefetched = null; // Consumed.
             switch (event) {
             case END_OBJECT:
@@ -561,12 +580,13 @@ public class JsonBeanDecoder extends JsonCodec {
 
     private <T> T objectToBean(Class<T> beanCls, JsonToken prefetched)
             throws JsonDecodeException, IOException {
-        Map<String, PropertyDescriptor> beanProps = new HashMap<>();
         BeanInfo beanInfo = findBeanInfo(beanCls);
         if (beanInfo == null) {
             throw new JsonDecodeException(parser.getCurrentLocation()
                 + ": Cannot introspect " + beanCls);
         }
+        @SuppressWarnings("PMD.UseConcurrentHashMap")
+        Map<String, PropertyDescriptor> beanProps = new HashMap<>();
         for (PropertyDescriptor p : beanInfo.getPropertyDescriptors()) {
             beanProps.put(p.getName(), p);
         }
@@ -609,12 +629,12 @@ public class JsonBeanDecoder extends JsonCodec {
                 .entrySet()) {
                 String[] conProps = e.getKey().value();
                 if (propsMap.keySet().containsAll(Arrays.asList(conProps))) {
+                    @SuppressWarnings("PMD.AvoidInstantiatingObjectsInLoops")
                     Object[] args = new Object[conProps.length];
                     for (int i = 0; i < conProps.length; i++) {
                         args[i] = propsMap.remove(conProps[i]);
                     }
-                    T result = e.getValue().newInstance(args);
-                    return result;
+                    return e.getValue().newInstance(args);
                 }
             }
 
@@ -630,10 +650,12 @@ public class JsonBeanDecoder extends JsonCodec {
     private Map<String, Object> parseProperties(
             Map<String, PropertyDescriptor> beanProps, JsonToken prefetched)
             throws JsonDecodeException, IOException {
+        @SuppressWarnings("PMD.UseConcurrentHashMap")
         Map<String, Object> map = new HashMap<>();
         whileLoop: while (true) {
+            @SuppressWarnings("PMD.ConfusingTernary")
             JsonToken event
-                = prefetched != null ? prefetched : parser.nextToken();
+                = (prefetched != null) ? prefetched : parser.nextToken();
             prefetched = null; // Consumed.
             switch (event) {
             case END_OBJECT:
@@ -691,16 +713,10 @@ public class JsonBeanDecoder extends JsonCodec {
         }
     }
 
+    @SuppressWarnings({ "PMD.CognitiveComplexity", "PMD.NcssCount",
+        "PMD.NPathComplexity", "PMD.SwitchDensity" })
     private OpenType<?> readOpenType()
             throws IOException, JsonDecodeException {
-        String type = null;
-        String description = null;
-        List<CompositeItem> items = null;
-        String elementType = null;
-        int dimension = 0;
-        CompositeType rowType = null;
-        String[] indices = null;
-
         if (parser.currentToken() == JsonToken.VALUE_STRING) {
             OpenType<?> result = openTypes.get(parser.getText());
             if (result != null) {
@@ -713,6 +729,13 @@ public class JsonBeanDecoder extends JsonCodec {
             throw new JsonDecodeException(parser.getCurrentLocation()
                 + ": value of type must be definition or valid reference.");
         }
+        String type = null;
+        String description = null;
+        List<CompositeItem> items = null;
+        String elementType = null;
+        int dimension = 0;
+        CompositeType rowType = null;
+        String[] indices = null;
         while (true) {
             JsonToken token = parser.nextToken();
             if (token == null) {
@@ -818,21 +841,22 @@ public class JsonBeanDecoder extends JsonCodec {
         }
     }
 
+    @SuppressWarnings("PMD.AvoidLiteralsInIfCondition")
     private OpenType<?> createArrayDefintion(String type, String elementType,
             int dimension) throws JsonDecodeException {
         try {
-            ArrayType<?> openType = null;
+            ArrayType<?> openType;
             Class<?> wrapper = primitiveNameToWrapper(elementType);
-            if (wrapper != null) {
+            if (wrapper == null) {
+                openType
+                    = new ArrayType<>(dimension, openTypes.get(elementType));
+            } else {
                 // Primitive type
                 openType = new ArrayType<>(
-                    simpleOpenTypes.get(wrapper.getName()), true);
+                    simpleOpenTypeByName(wrapper.getName()), true);
                 if (dimension > 1) {
                     openType = new ArrayType<>(dimension - 1, openType);
                 }
-            } else {
-                openType
-                    = new ArrayType<>(dimension, openTypes.get(elementType));
             }
             openTypes.put(type, openType);
             return openType;
@@ -842,6 +866,9 @@ public class JsonBeanDecoder extends JsonCodec {
         }
     }
 
+    /**
+     * Represents an item from a composite type.
+     */
     private static class CompositeItem {
         public String name;
         public String description;
@@ -850,13 +877,12 @@ public class JsonBeanDecoder extends JsonCodec {
 
     private List<CompositeItem> readCompositeTypeItems()
             throws IOException, JsonDecodeException {
-        List<CompositeItem> result = new ArrayList<>();
         JsonToken token = parser.nextToken();
         if (!token.equals(JsonToken.START_OBJECT)) {
             throw new JsonDecodeException(parser.getCurrentLocation()
                 + ": Expect start of object.");
         }
-        CompositeItem item = null;
+        List<CompositeItem> result = new ArrayList<>();
         while (true) {
             token = parser.nextToken();
             if (token == null) {
@@ -867,7 +893,8 @@ public class JsonBeanDecoder extends JsonCodec {
             case END_OBJECT:
                 return result;
             case FIELD_NAME:
-                item = new CompositeItem();
+                @SuppressWarnings("PMD.AvoidInstantiatingObjectsInLoops")
+                CompositeItem item = new CompositeItem();
                 item.name = parser.getText();
                 item.description = item.name; // Fallback
                 if (parser.nextToken() != JsonToken.START_OBJECT) {
@@ -917,7 +944,7 @@ public class JsonBeanDecoder extends JsonCodec {
     }
 
     @SuppressWarnings("unchecked")
-    private <T> T readOpenTypeValues(Class<T> expected, OpenType<T> openType)
+    private <T> T readOpenTypeValues(OpenType<T> openType)
             throws JsonDecodeException, IOException {
         if (openType instanceof CompositeType) {
             return (T) readCompositeData((CompositeType) openType);
@@ -930,6 +957,7 @@ public class JsonBeanDecoder extends JsonCodec {
 
     private CompositeData readCompositeData(CompositeType type)
             throws JsonDecodeException, IOException {
+        @SuppressWarnings("PMD.UseConcurrentHashMap")
         Map<String, Object> asMap = new HashMap<>();
         while (true) {
             JsonToken event = parser.nextToken();
@@ -956,6 +984,7 @@ public class JsonBeanDecoder extends JsonCodec {
         }
     }
 
+    @SuppressWarnings("PMD.LiteralsFirstInComparisons")
     private TabularData readTabularData(TabularType openType)
             throws IOException, JsonDecodeException {
         JsonToken event = parser.nextToken();
@@ -994,6 +1023,7 @@ public class JsonBeanDecoder extends JsonCodec {
             throw new JsonDecodeException(parser.getCurrentLocation()
                 + ": Unexpected Json event " + event);
         }
+        @SuppressWarnings("PMD.UseConcurrentHashMap")
         Map<String, Object> items = new HashMap<>();
         Iterator<String> fields = tabularType.getRowType().keySet().iterator();
         while (fields.hasNext()) {

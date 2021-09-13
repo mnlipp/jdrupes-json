@@ -27,6 +27,7 @@ import java.util.stream.Stream;
  * A view on a `List<Object>` that provides some utility methods
  * for accessing the data.
  */
+@SuppressWarnings("PMD.AvoidDuplicateLiterals")
 public interface JsonArray {
 
     JsonArray EMPTY_ARRAY = from(Collections.emptyList());
@@ -36,7 +37,7 @@ public interface JsonArray {
      * 
      * @return the json array
      */
-    public static JsonArray create() {
+    static JsonArray create() {
         return new DefaultJsonArray();
     }
 
@@ -46,7 +47,7 @@ public interface JsonArray {
      * @param backing the backing list
      * @return the json array
      */
-    public static JsonArray from(List<Object> backing) {
+    static JsonArray from(List<Object> backing) {
         return new JsonArrayWrapper(backing);
     }
 
@@ -57,12 +58,22 @@ public interface JsonArray {
      * @param backing the backing list
      * @return the argument
      */
-    public static JsonArray from(DefaultJsonArray backing) {
+    static JsonArray from(DefaultJsonArray backing) {
         return backing;
     }
 
+    /**
+     * Returns the list of objects that this array is backing.
+     * 
+     * @return the objects in the array
+     */
     List<Object> backing();
 
+    /**
+     * Returns the size of the array.
+     * 
+     * @return the size
+     */
     int size();
 
     /**
@@ -80,35 +91,85 @@ public interface JsonArray {
      */
     Stream<JsonArray> arrayStream();
 
+    /**
+     * Appends the given value.
+     *
+     * @param value the value
+     * @return the json array
+     */
     JsonArray append(Object value);
 
+    /**
+     * Returns the value at the given index.
+     *
+     * @param index the index
+     * @return the object
+     */
     Object get(int index);
 
+    /**
+     * Returns the value at the given index as string.
+     *
+     * @param index the index
+     * @return the string
+     */
     String asString(int index);
 
+    /**
+     * Returns the value at the given index as int.
+     *
+     * @param index the index
+     * @return the int
+     */
     int asInt(int index);
 
+    /**
+     * Returns the value at the given index as long.
+     *
+     * @param index the index
+     * @return the long
+     */
     long asLong(int index);
 
+    /**
+     * Returns the value at the given index as boolean.
+     *
+     * @param index the index
+     * @return true, if successful
+     */
     boolean asBoolean(int index);
 
+    /**
+     * Returns the value at the given index as float.
+     *
+     * @param index the index
+     * @return the float
+     */
     float asFloat(int index);
 
+    /**
+     * Returns the value at the given index as double.
+     *
+     * @param index the index
+     * @return the double
+     */
     double asDouble(int index);
 
+    /**
+     * Returns the value at the given index as a JSON array.
+     *
+     * @param index the index
+     * @return the json array
+     */
     JsonArray asArray(int index);
 
     /**
      * Instances of this class are used as default representations for JSON
      * arrays.
      */
-    public static class DefaultJsonArray extends ArrayList<Object>
-            implements JsonArray {
+    class DefaultJsonArray extends ArrayList<Object> implements JsonArray {
 
         private static final long serialVersionUID = 2997178412748739135L;
-
-        public DefaultJsonArray() {
-        }
 
         @Override
         public List<Object> backing() {
@@ -232,9 +293,9 @@ public interface JsonArray {
      * Instances of this class are used as default representations for JSON
      * arrays.
      */
-    public static class JsonArrayWrapper implements JsonArray {
+    class JsonArrayWrapper implements JsonArray {
 
-        private List<Object> backing;
+        private final List<Object> backing;
 
         private JsonArrayWrapper(List<Object> backing) {
             this.backing = backing;

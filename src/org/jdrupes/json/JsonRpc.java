@@ -21,6 +21,9 @@ package org.jdrupes.json;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * An interface that defines a JSON RPC.
+ */
 public interface JsonRpc extends JsonObject {
 
     /**
@@ -42,42 +45,84 @@ public interface JsonRpc extends JsonObject {
      * 
      * @return the id
      */
+    @SuppressWarnings("PMD.ShortMethodName")
     Optional<Object> id();
 
-    public JsonRpc setMethod(String method);
+    /**
+     * Sets the method.
+     *
+     * @param method the method
+     * @return the json rpc
+     */
+    @SuppressWarnings("PMD.LinguisticNaming")
+    JsonRpc setMethod(String method);
 
-    public JsonRpc setParams(JsonArray params);
+    /**
+     * Sets the params.
+     *
+     * @param params the params
+     * @return the json rpc
+     */
+    @SuppressWarnings("PMD.LinguisticNaming")
+    JsonRpc setParams(JsonArray params);
 
-    public JsonRpc addParam(Object param);
+    /**
+     * Adds the param.
+     *
+     * @param param the param
+     * @return the json rpc
+     */
+    JsonRpc addParam(Object param);
 
     /**
      * Creates an instance of {@link JsonRpc}.
      * 
      * @return the result
      */
-    public static JsonRpc create() {
+    static JsonRpc create() {
         return new DefaultJsonRpc();
     }
 
-    public class DefaultJsonRpc extends DefaultJsonObject implements JsonRpc {
+    /**
+     * The Class DefaultJsonRpc.
+     */
+    class DefaultJsonRpc extends DefaultJsonObject implements JsonRpc {
 
         private static final long serialVersionUID = -5874908112198729940L;
 
+        /**
+         * Instantiates a new default json rpc.
+         */
         public DefaultJsonRpc() {
             put("jsonrpc", "2.0");
         }
 
+        /*
+         * (non-Javadoc)
+         * 
+         * @see org.jdrupes.json.JsonRpc#method()
+         */
         @Override
         public String method() {
             return (String) get("method");
         }
 
+        /*
+         * (non-Javadoc)
+         * 
+         * @see org.jdrupes.json.JsonRpc#setMethod(java.lang.String)
+         */
         @Override
         public DefaultJsonRpc setMethod(String method) {
             put("method", method);
             return this;
         }
 
+        /*
+         * (non-Javadoc)
+         * 
+         * @see org.jdrupes.json.JsonRpc#params()
+         */
         @SuppressWarnings("unchecked")
         @Override
         public JsonArray params() {
@@ -94,12 +139,22 @@ public interface JsonRpc extends JsonObject {
                     + values.getClass().getName());
         }
 
+        /*
+         * (non-Javadoc)
+         * 
+         * @see org.jdrupes.json.JsonRpc#setParams(org.jdrupes.json.JsonArray)
+         */
         @Override
         public DefaultJsonRpc setParams(JsonArray params) {
             put("params", params);
             return this;
         }
 
+        /*
+         * (non-Javadoc)
+         * 
+         * @see org.jdrupes.json.JsonRpc#addParam(java.lang.Object)
+         */
         @Override
         public DefaultJsonRpc addParam(Object param) {
             JsonArray params = (JsonArray) computeIfAbsent(
@@ -108,7 +163,13 @@ public interface JsonRpc extends JsonObject {
             return this;
         }
 
+        /*
+         * (non-Javadoc)
+         * 
+         * @see org.jdrupes.json.JsonRpc#id()
+         */
         @Override
+        @SuppressWarnings("PMD.ShortMethodName")
         public Optional<Object> id() {
             return Optional.ofNullable(get("id"));
         }

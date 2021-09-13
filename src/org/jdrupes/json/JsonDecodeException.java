@@ -24,25 +24,52 @@ package org.jdrupes.json;
 @SuppressWarnings("serial")
 public class JsonDecodeException extends Exception {
 
-	public JsonDecodeException() {
-		super();
-	}
+    /**
+     * Instantiates a new JSON decode exception.
+     */
+    public JsonDecodeException() {
+        super();
+    }
 
-	public JsonDecodeException(String message, Throwable cause,
-	        boolean enableSuppression, boolean writableStackTrace) {
-		super(message, cause, enableSuppression, writableStackTrace);
-	}
+    /**
+     * Instantiates a new JSON decode exception.
+     *
+     * @param message the message
+     * @param cause the cause
+     * @param enableSuppression the enable suppression
+     * @param writableStackTrace the writable stack trace
+     */
+    public JsonDecodeException(String message, Throwable cause,
+            boolean enableSuppression, boolean writableStackTrace) {
+        super(message, cause, enableSuppression, writableStackTrace);
+    }
 
-	public JsonDecodeException(String message, Throwable cause) {
-		super(message, cause);
-	}
+    /**
+     * Instantiates a new JSON decode exception.
+     *
+     * @param message the message
+     * @param cause the cause
+     */
+    public JsonDecodeException(String message, Throwable cause) {
+        super(message, cause);
+    }
 
-	public JsonDecodeException(String message) {
-		super(message);
-	}
+    /**
+     * Instantiates a new JSON decode exception.
+     *
+     * @param message the message
+     */
+    public JsonDecodeException(String message) {
+        super(message);
+    }
 
-	public JsonDecodeException(Throwable cause) {
-		super(cause);
-	}
+    /**
+     * Instantiates a new JSON decode exception.
+     *
+     * @param cause the cause
+     */
+    public JsonDecodeException(Throwable cause) {
+        super(cause);
+    }
 
 }
