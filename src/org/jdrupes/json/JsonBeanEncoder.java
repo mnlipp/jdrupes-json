@@ -432,6 +432,9 @@ public final class JsonBeanEncoder extends JsonCodec
             writeOpenType(data.getCompositeType());
         }
         for (String name : data.getCompositeType().keySet()) {
+            if (data.get(name) == null) {
+                continue;
+            }
             gen.writeFieldName(name);
             // Suppress class entry, type has been fully described already.
             doWriteObject(data.get(name), data.get(name).getClass());
