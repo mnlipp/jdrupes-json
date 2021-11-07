@@ -34,7 +34,7 @@ group = 'org.jdrupes.json'
 archivesBaseName = 'json'
 description = "JDrupes JSON library"
 
-ext.releaseVersion = "2.2.0"
+ext.releaseVersion = "2.3.0"
 ext.isSnapshot = true
 version = releaseVersion + (isSnapshot ? "-SNAPSHOT" : "")
 
