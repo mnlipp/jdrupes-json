@@ -115,6 +115,7 @@ public class JsonBeanDecoder extends JsonCodec {
                 return Optional.empty();
             }
         };
+    private boolean skipUnknown = false;
     private JsonParser parser;
 
     @Override
@@ -134,6 +135,20 @@ public class JsonBeanDecoder extends JsonCodec {
     public JsonBeanDecoder setClassConverter(
             Function<String, Optional<Class<?>>> converter) {
         this.classConverter = converter;
+        return this;
+    }
+
+    /**
+     * Cause this decoder to silently skip information from the JSON source
+     * that cannot be mapped to a property of the bean being created.
+     * This is useful if e.g. a REST invocation returns data that you
+     * are not interested in and therefore don't want to model in your 
+     * JavaBean. 
+     * 
+     * @return the decoder for chaining
+     */
+    public JsonBeanDecoder skipUnknown() {
+        skipUnknown = true;
         return this;
     }
 
@@ -474,6 +489,9 @@ public class JsonBeanDecoder extends JsonCodec {
         for (Map.Entry<String, ?> e : propsMap.entrySet()) {
             PropertyDescriptor property = beanProps.get(e.getKey());
             if (property == null) {
+                if (skipUnknown) {
+                    continue;
+                }
                 throw new JsonDecodeException(parser.getCurrentLocation()
                     + ": No bean property for key " + e.getKey());
             }
@@ -535,11 +553,12 @@ public class JsonBeanDecoder extends JsonCodec {
             case FIELD_NAME:
                 String key = parser.getText();
                 PropertyDescriptor property = beanProps.get(key);
+                Object value;
                 if (property == null) {
-                    throw new JsonDecodeException(parser.getCurrentLocation()
-                        + ": No bean property for key " + key);
+                    value = readValue(Object.class);
+                } else {
+                    value = readValue(property.getPropertyType());
                 }
-                Object value = readValue(property.getPropertyType());
                 map.put(key, value);
                 break;
 
