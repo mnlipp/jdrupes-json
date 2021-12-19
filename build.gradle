@@ -30,12 +30,12 @@ group = 'org.jdrupes.json'
 archivesBaseName = 'json'
 description = "JDrupes JSON library"
 
-ext.releaseVersion = "2.3.0"
+ext.releaseVersion = "2.3.1"
 ext.isSnapshot = true
 version = releaseVersion + (isSnapshot ? "-SNAPSHOT" : "")
 
 // Derive bundle version and propagate to bnd
-String bundleVersion = releaseVersion +
+def bundleVersion = releaseVersion +
 	(isSnapshot ? ".-\${tstamp}-SNAPSHOT" : ".rel")
 
 java {
@@ -45,7 +45,8 @@ java {
 
 jar {
 	manifest {
-		attributes('Bundle-Version': bundleVersion)
+        // Used by bnd to calculate "Bundle-Version" header
+		attributes('bundleVersion': bundleVersion)
 	}
 }
 
