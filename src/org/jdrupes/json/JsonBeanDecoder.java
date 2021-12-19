@@ -66,7 +66,6 @@ import javax.management.openmbean.TabularType;
 import org.jdrupes.json.JsonArray.DefaultJsonArray;
 import org.jdrupes.json.JsonObject.DefaultJsonObject;
 
-// TODO: Auto-generated Javadoc
 /**
  * Decoder for converting JSON to a Java object graph. The decoding
  * is based on the expected type passed to the decode method.
