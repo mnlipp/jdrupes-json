@@ -7,7 +7,7 @@ buildscript {
 		maven { url 'https://jitpack.io' }
     }
     dependencies {
-        classpath 'biz.aQute.bnd:biz.aQute.bnd.gradle:3.5.0'
+        classpath 'biz.aQute.bnd:biz.aQute.bnd.gradle:6.1.0'
     }
 }
 
@@ -23,10 +23,10 @@ repositories {
     mavenCentral()
 }
 
+apply plugin: 'java-library'
 apply plugin: 'biz.aQute.bnd.builder'
 apply plugin: 'signing'
 apply plugin: 'maven-publish'
-apply plugin: 'maven'
 // Makes Eclipse-groovy handle *.gradle file properly
 apply plugin:'groovy'
 
@@ -42,19 +42,14 @@ version = releaseVersion + (isSnapshot ? "-SNAPSHOT" : "")
 String bundleVersion = releaseVersion +
 	(isSnapshot ? ".-\${tstamp}-SNAPSHOT" : ".rel")
 
-tasks.compileJava {
-    sourceCompatibility = 1.8
-    targetCompatibility = 1.8
+java {
+    sourceCompatibility = 11
+    targetCompatibility = 11
 }
 
-tasks.compileTestJava {
-    sourceCompatibility = 1.8
-    targetCompatibility = 1.8
-}    
-    
 jar {
 	manifest {
-		attributes('bundleVersion': bundleVersion)
+		attributes('BundleVersion': bundleVersion)
 	}
 }
 
@@ -63,8 +58,8 @@ test {
 }
 
 dependencies {
-    compileOnly 'org.osgi:org.osgi.annotation:6.0.0'
-	compile group: 'com.fasterxml.jackson.core', name: 'jackson-core', version: '2.12.2'
+    api 'com.fasterxml.jackson.core:jackson-core:2.12.2'
+    implementation 'org.osgi:org.osgi.annotation:6.0.0'
     testImplementation "org.codehaus.groovy:groovy-all:3.0.5"
     testImplementation "org.spockframework:spock-core:2.0-M5-groovy-3.0"
 
