@@ -129,7 +129,7 @@ public class JsonBeanDecoder extends JsonCodec {
     private static final Object END_VALUE = new Object();
     @SuppressWarnings("PMD.UseConcurrentHashMap")
     private final Map<String, Class<?>> aliases = new HashMap<>();
-    private boolean skipUnknown = false;
+    private boolean skipUnknown;
     private Function<String, Optional<Class<
             ?>>> classConverter = name -> {
                 try {
@@ -699,7 +699,7 @@ public class JsonBeanDecoder extends JsonCodec {
         return map;
     }
 
-    @SuppressWarnings("deprecation")
+    @SuppressWarnings({ "PMD.AvoidAccessibilityAlteration" })
     private <T> void setProperty(T obj, PropertyDescriptor property,
             Object value) throws JsonDecodeException {
         try {
@@ -709,7 +709,7 @@ public class JsonBeanDecoder extends JsonCodec {
                 return;
             }
             Field propField = findField(obj.getClass(), property.getName());
-            if (!propField.isAccessible()) {
+            if (!propField.canAccess(obj)) {
                 propField.setAccessible(true);
             }
             propField.set(obj, value);
