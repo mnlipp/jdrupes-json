@@ -2,19 +2,15 @@ import aQute.bnd.osgi.Processor
 
 buildscript {
     repositories {
-        jcenter()
         mavenCentral()
 		maven { url 'https://jitpack.io' }
-    }
-    dependencies {
-        classpath 'biz.aQute.bnd:biz.aQute.bnd.gradle:6.1.0'
     }
 }
 
 plugins {
-    id 'biz.aQute.bnd.builder' version "5.3.0"
+    id 'biz.aQute.bnd.builder' version "6.1.0"
 	id "org.jdrupes.mdoclet" version "1.0.3"
-    id 'org.ajoberstar.grgit' version '4.0.1'
+    id 'org.ajoberstar.grgit' version '4.1.0'
     id 'org.ajoberstar.git-publish' version '3.0.0'
 }
 
@@ -43,13 +39,13 @@ String bundleVersion = releaseVersion +
 	(isSnapshot ? ".-\${tstamp}-SNAPSHOT" : ".rel")
 
 java {
-    sourceCompatibility = 11
-    targetCompatibility = 11
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
 }
 
 jar {
 	manifest {
-		attributes('BundleVersion': bundleVersion)
+		attributes('Bundle-Version': bundleVersion)
 	}
 }
 
@@ -60,7 +56,7 @@ test {
 dependencies {
     api 'com.fasterxml.jackson.core:jackson-core:2.12.2'
     implementation 'org.osgi:org.osgi.annotation:6.0.0'
-    testImplementation "org.codehaus.groovy:groovy-all:3.0.5"
+    testImplementation "org.codehaus.groovy:groovy-all:3.0.9"
     testImplementation "org.spockframework:spock-core:2.0-M5-groovy-3.0"
 
 	// Use gradle mechanims to get the artifact to baseline against.
@@ -111,7 +107,7 @@ dependencies {
 }
 
 task java11doc(type: JavaExec) {
-    enabled = !JavaVersion.current().isJava8()
+    enabled = JavaVersion.current().isJava11()
     
     dependsOn classes
     inputs.file "overview.md"

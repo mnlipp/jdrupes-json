@@ -13,7 +13,7 @@ The goal of this package is to provide a JSON encoder and decoder for Java Beans
 as an OSGi compliant utility library using the 
 [Jackson core library](https://github.com/FasterXML/jackson-core).
 
-This library requires Java 8 SE. Binaries are currently made
+This library requires Java 11 SE. Binaries are currently made
 available at maven central.
 
 ```gradle
