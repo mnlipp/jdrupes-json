@@ -50,15 +50,16 @@ import javax.management.openmbean.TabularData;
 import javax.management.openmbean.TabularType;
 
 /**
- * Encoder for converting a Java object graph to JSON. Objects may be arrays,
- * collections, maps and JavaBeans.
+ * Encoder for converting a Java object graph to JSON. Objects may be JavaBeans
+ * and arrays, collections, maps of primitive types, JavaBeans and
+ * OpenTypes.
  * 
  * Arrays and collections are converted to JSON arrays. The
- * type information is lost. Maps and JavaBeans are converted
+ * type information is lost. Maps, JavaBeans and MBeans are converted
  * to JSON objects.
  * 
- * The generated JSON objects can have an additional key/value pair with
- * key "class" and a class name. The class information is generated
+ * The JSON description of objects can have an additional key/value pair with
+ * key "class" and a class name. This class information is generated
  * only if it is needed, i.e. if it cannot be derived from the containing
  * object.
  * 
@@ -148,6 +149,10 @@ import javax.management.openmbean.TabularType;
  * 
  * Values of type {@link ObjectName} are converted to their canonical 
  * string representation.
+ * 
+ * If The value is of a {@link CompositeType} or {@link TabularType}
+ * as used for MBeans' attributes, the OpenType description is generated
+ * as value for the class key.
  */
 @SuppressWarnings({ "PMD.CyclomaticComplexity", "PMD.AvoidDuplicateLiterals",
     "PMD.TooManyMethods", "PMD.DataflowAnomalyAnalysis" })
